@@ -221,6 +221,8 @@ export default function TeachingDashboard() {
                             onClick={() => {
                                 setActiveNav(item.id);
                                 if (item.id === 'dashboard') navigate('/faculty-dashboard');
+                                if (item.id === 'research') navigate('/research-dashboard');
+                                if (item.id === 'expertise') navigate('/expertise-dashboard');
                             }}
                         >
                             <span className="fd-nav-icon">{item.icon}</span>

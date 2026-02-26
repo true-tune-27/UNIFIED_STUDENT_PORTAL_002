@@ -1,0 +1,253 @@
+/* ═══════════════════════════════════════════════════════════════
+   ExpertiseDashboard.css – Expertise / Value Addition
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Main Content Area ── */
+.ed-content {
+    padding: 32px 36px 48px;
+    max-width: 1100px;
+    margin: 0 auto;
+}
+
+/* ── Page Header ── */
+.ed-page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 28px;
+}
+
+.ed-page-title {
+    font-family: 'Outfit', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: #1a1a2e;
+    margin: 0;
+}
+
+.ed-page-check {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #1a1a2e;
+    font-size: 22px;
+}
+
+/* ── Section Block ── */
+.ed-section-block {
+    margin-bottom: 40px;
+}
+
+.ed-section-title {
+    font-family: 'Outfit', sans-serif;
+    font-size: 17px;
+    font-weight: 700;
+    color: #1a1a2e;
+    margin: 0 0 20px;
+}
+
+/* ── Inline Row ── */
+.ed-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    padding: 16px 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    flex-wrap: wrap;
+}
+
+.ed-row:last-of-type {
+    border-bottom: none;
+}
+
+/* ── Field Group ── */
+.ed-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+    min-width: 140px;
+}
+
+.ed-field--wide {
+    flex: 2;
+    min-width: 220px;
+}
+
+.ed-field-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #9a8c98;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* ── Select / Input ── */
+.ed-select,
+.ed-input {
+    width: 100%;
+    padding: 10px 14px;
+    border: none;
+    border-bottom: 2.5px solid #4361ee;
+    border-radius: 0;
+    font-size: 14px;
+    font-family: 'Inter', sans-serif;
+    color: #1a1a2e;
+    background: transparent;
+    transition: border-color 0.25s;
+    outline: none;
+    appearance: auto;
+    -webkit-appearance: auto;
+}
+
+.ed-select:focus,
+.ed-input:focus {
+    border-bottom-color: #f72585;
+}
+
+.ed-select {
+    cursor: pointer;
+}
+
+/* ── Row Actions (Upload, Points, Delete) ── */
+.ed-row-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    padding-bottom: 2px;
+}
+
+.ed-upload-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border: 1.5px solid #bbb;
+    border-radius: 8px;
+    background: #fff;
+    color: #555;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'Inter', sans-serif;
+    white-space: nowrap;
+}
+
+.ed-upload-btn:hover {
+    border-color: #4361ee;
+    color: #4361ee;
+    background: rgba(67, 97, 238, 0.04);
+}
+
+.ed-upload-icon {
+    font-size: 14px;
+}
+
+.ed-points-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: #fff3e0;
+    border: 2px solid #e87722;
+    color: #e87722;
+    font-weight: 700;
+    font-size: 13px;
+    flex-shrink: 0;
+}
+
+.ed-delete-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: none;
+    background: rgba(0, 0, 0, 0.04);
+    color: #999;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.ed-delete-btn:hover {
+    background: rgba(247, 37, 133, 0.1);
+    color: #f72585;
+}
+
+/* ── Add Row ── */
+.ed-add-row {
+    display: flex;
+    justify-content: flex-end;
+    padding: 12px 0 0;
+}
+
+.ed-add-row-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 18px;
+    border: none;
+    background: transparent;
+    color: #4361ee;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    border-radius: 8px;
+    transition: background 0.2s;
+}
+
+.ed-add-row-btn:hover {
+    background: rgba(67, 97, 238, 0.08);
+}
+
+/* ── Self Assessment Bar ── */
+.ed-assessment-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 24px;
+    margin-top: 8px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #f5f0ff, #ede7f6);
+    border: 1px solid rgba(67, 97, 238, 0.1);
+    font-family: 'Outfit', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    color: #4a4e69;
+}
+
+.ed-assessment-points {
+    font-weight: 800;
+    font-size: 16px;
+    color: #4361ee;
+}
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+    .ed-content {
+        padding: 20px 16px 36px;
+    }
+
+    .ed-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .ed-field {
+        min-width: 100%;
+    }
+
+    .ed-row-actions {
+        justify-content: flex-end;
+        margin-top: 8px;
+    }
+}
