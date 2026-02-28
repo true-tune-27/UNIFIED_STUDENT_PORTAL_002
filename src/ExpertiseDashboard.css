@@ -1,5 +1,5 @@
 /* ============================================================
-   EXPERTISE DASHBOARD – Premium Academic Theme (ed-* classes)
+   EXPERTISE DASHBOARD – Cloud White & Cool Blue Theme (ed-* classes)
    ============================================================ */
 
 /* ── Content area ── */
@@ -34,7 +34,7 @@
     font-family: 'Poppins', sans-serif;
     font-size: 22px;
     font-weight: 800;
-    color: #0f172a;
+    color: #1e3a5f;
     margin: 0;
     flex: 1;
 }
@@ -42,7 +42,7 @@
 .ed-page-check {
     width: 36px;
     height: 36px;
-    background: linear-gradient(135deg, #0f766e, #0284c7);
+    background: linear-gradient(135deg, #3a7bd5, #5a9be6);
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -50,18 +50,24 @@
     color: #fff;
     font-size: 18px;
     font-weight: 700;
-    box-shadow: 0 4px 14px rgba(15, 118, 110, 0.3);
+    box-shadow: 0 4px 14px rgba(58, 123, 213, 0.3);
     flex-shrink: 0;
+    transition: transform 0.25s ease;
+}
+
+.ed-page-check:hover {
+    transform: scale(1.1);
 }
 
 /* ── Section block ── */
 .ed-section-block {
-    background: #ffffff;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(12px);
     border-radius: 20px;
     padding: 26px 28px 20px;
     margin-bottom: 28px;
-    box-shadow: 0 3px 18px rgba(15, 23, 42, 0.07);
-    border: 1px solid rgba(100, 116, 139, 0.1);
+    box-shadow: 0 3px 18px rgba(58, 123, 213, 0.06);
+    border: 1px solid rgba(58, 123, 213, 0.08);
     animation: ed-cardSlideUp 0.45s ease-out backwards;
 }
 
@@ -85,10 +91,10 @@
     font-family: 'Poppins', sans-serif;
     font-size: 17px;
     font-weight: 800;
-    color: #0f172a;
+    color: #1e3a5f;
     margin: 0 0 22px;
     padding-bottom: 14px;
-    border-bottom: 2px solid #f8fafc;
+    border-bottom: 2px solid #e8f4fd;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -99,7 +105,7 @@
     display: inline-block;
     width: 5px;
     height: 20px;
-    background: linear-gradient(180deg, #d97706, #f59e0b);
+    background: linear-gradient(180deg, #3a7bd5, #6ba8e8);
     border-radius: 4px;
     flex-shrink: 0;
 }
@@ -110,7 +116,7 @@
     align-items: flex-end;
     gap: 16px;
     padding: 16px 0;
-    border-bottom: 1px solid #f8fafc;
+    border-bottom: 1px solid #e8f4fd;
     flex-wrap: wrap;
     transition: background 0.18s;
 }
@@ -120,8 +126,8 @@
 }
 
 .ed-row:hover {
-    background: #f8faff;
-    border-radius: 10px;
+    background: #f6faff;
+    border-radius: 12px;
 }
 
 /* ── Fields ── */
@@ -141,7 +147,7 @@
     font-family: 'Poppins', sans-serif;
     font-size: 12px;
     font-weight: 600;
-    color: #78909c;
+    color: #8baac4;
     text-transform: uppercase;
     letter-spacing: 0.6px;
 }
@@ -149,48 +155,48 @@
 /* ── Selects and inputs ── */
 .ed-select {
     padding: 11px 16px;
-    border: 2px solid #f1f5f9;
-    border-radius: 12px;
+    border: 2px solid rgba(58, 123, 213, 0.1);
+    border-radius: 14px;
     font-size: 13.5px;
     font-family: 'Inter', sans-serif;
     background: #ffffff;
-    color: #0f172a;
+    color: #1e3a5f;
     outline: none;
     cursor: pointer;
     transition: all 0.22s ease;
     appearance: none;
-    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24'%3E%3Cpath fill='%233949ab' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24'%3E%3Cpath fill='%233a7bd5' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 12px center;
     padding-right: 40px;
 }
 
 .ed-select:focus {
-    border-color: #475569;
+    border-color: #3a7bd5;
     background-color: #fff;
-    box-shadow: 0 0 0 4px rgba(71, 85, 105, 0.1);
+    box-shadow: 0 0 0 4px rgba(58, 123, 213, 0.1);
 }
 
 .ed-input {
     padding: 11px 16px;
-    border: 2px solid #f1f5f9;
-    border-radius: 12px;
+    border: 2px solid rgba(58, 123, 213, 0.1);
+    border-radius: 14px;
     font-size: 13.5px;
     font-family: 'Inter', sans-serif;
     background: #ffffff;
-    color: #0f172a;
+    color: #1e3a5f;
     outline: none;
     transition: all 0.22s ease;
 }
 
 .ed-input:focus {
-    border-color: #475569;
+    border-color: #3a7bd5;
     background-color: #fff;
-    box-shadow: 0 0 0 4px rgba(71, 85, 105, 0.1);
+    box-shadow: 0 0 0 4px rgba(58, 123, 213, 0.1);
 }
 
 .ed-input::placeholder {
-    color: #b0bec5;
+    color: #b0c4db;
 }
 
 /* ── Row actions ── */
@@ -207,9 +213,9 @@
     gap: 6px;
     padding: 10px 18px;
     background: #fff;
-    border: 2px solid #b2dfdb;
-    border-radius: 10px;
-    color: #0f766e;
+    border: 2px solid rgba(58, 123, 213, 0.15);
+    border-radius: 14px;
+    color: #3a7bd5;
     font-family: 'Inter', sans-serif;
     font-weight: 600;
     font-size: 12.5px;
@@ -219,8 +225,8 @@
 }
 
 .ed-upload-btn:hover {
-    background: #f0fdfa;
-    border-color: #0f766e;
+    background: #e8f4fd;
+    border-color: #3a7bd5;
     transform: translateY(-1px);
 }
 
@@ -234,21 +240,21 @@
     font-weight: 800;
     color: #fff;
     font-size: 15px;
-    background: linear-gradient(135deg, #e65100, #d97706);
+    background: linear-gradient(135deg, #2a5faa, #3a7bd5);
     padding: 6px 18px;
     border-radius: 24px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     min-width: 44px;
-    box-shadow: 0 3px 12px rgba(245, 124, 0, 0.3);
+    box-shadow: 0 3px 12px rgba(58, 123, 213, 0.3);
 }
 
 /* ── Delete button ── */
 .ed-delete-btn {
     background: none;
     border: 2px solid #ffcdd2;
-    border-radius: 10px;
+    border-radius: 14px;
     padding: 9px 12px;
     cursor: pointer;
     font-size: 15px;
@@ -271,7 +277,7 @@
 
 .ed-add-row-btn {
     padding: 10px 24px;
-    background: linear-gradient(135deg, #0f172a, #475569);
+    background: linear-gradient(135deg, #2a5faa, #3a7bd5);
     color: #fff;
     border: none;
     border-radius: 25px;
@@ -280,13 +286,13 @@
     font-size: 13px;
     cursor: pointer;
     transition: all 0.25s ease;
-    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.28);
+    box-shadow: 0 4px 14px rgba(58, 123, 213, 0.28);
 }
 
 .ed-add-row-btn:hover {
-    background: linear-gradient(135deg, #1e293b, #64748b);
+    background: linear-gradient(135deg, #3a7bd5, #6ba8e8);
     transform: translateY(-2px);
-    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.35);
+    box-shadow: 0 8px 22px rgba(58, 123, 213, 0.35);
 }
 
 /* ── Assessment bar ── */
@@ -294,22 +300,22 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background: linear-gradient(135deg, #f1f5f9, #ffffff);
-    border-radius: 12px;
+    background: linear-gradient(135deg, #e8f4fd, #ffffff);
+    border-radius: 14px;
     padding: 14px 20px;
     margin-top: 16px;
     font-family: 'Poppins', sans-serif;
     font-weight: 600;
     font-size: 14px;
-    color: #0f172a;
-    border: 1px solid rgba(15, 23, 42, 0.1);
+    color: #1e3a5f;
+    border: 1px solid rgba(58, 123, 213, 0.1);
 }
 
 .ed-assessment-points {
     font-family: 'Poppins', sans-serif;
     font-weight: 800;
     font-size: 22px;
-    background: linear-gradient(135deg, #0f172a, #0284c7);
+    background: linear-gradient(135deg, #2a5faa, #3a7bd5);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
