@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './LoginPage.css';
+import { useAuth } from './AuthContext';
+import { getUserByCredentials } from './auth';
 import logoEmblem from './assets/logo.png';
 import circleSun from './assets/circle.png';
 
@@ -127,18 +129,34 @@ function LoginForm({ role, onSubmit }) {
 export default function LoginPage() {
   const [activeRole, setActiveRole] = useState('student');
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const handleLogin = ({ role, userId, password }) => {
     if (role === 'faculty') {
-      if (userId === 'faculty@aditya.edu' && password === 'faculty123') {
-        navigate('/faculty-dashboard');
+      const user = getUserByCredentials(userId, password);
+      if (user) {
+        login(user);
+        if (user.role === 'SuperAdmin') {
+          navigate('/super-admin');
+        } else {
+          navigate('/faculty-dashboard');
+        }
       } else {
-        alert('Invalid credentials!\n\nUse:\nID: faculty@aditya.edu\nPassword: faculty123');
+        alert(
+          'Invalid credentials!\n\n' +
+          'Try one of these:\n' +
+          '• faculty@aditya.edu / faculty123\n' +
+          '• coord@aditya.edu / coord123  (Coordinator)\n' +
+          '• hod@aditya.edu / hod123  (HOD)\n' +
+          '• dean@aditya.edu / dean123  (Dean)\n' +
+          '• admin@aditya.edu / admin123  (Super Admin)'
+        );
       }
     } else {
       alert('Student dashboard coming soon!');
     }
   };
+
 
   return (
     <div className="login-page">

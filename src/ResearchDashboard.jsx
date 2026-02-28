@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './ResearchDashboard.css';
+import { useAuth } from './AuthContext';
 import logoEmblem from './assets/logo.png';
 
 /* ── Sidebar main nav ── */
@@ -484,7 +485,7 @@ function ScopusCitations({ scopusData, setScopusData, onSave }) {
             </div>
 
             {/* 2.7 Citation Score */}
-            <div className="rd-info-box" style={{ borderLeftColor: '#e87722', background: 'linear-gradient(135deg, #fff3e0, #ffe0b2)' }}>
+            <div className="rd-info-box" style={{ borderLeftColor: '#e87722', background: 'linear-gradient(135deg, #fffbeb, #ffe0b2)' }}>
                 <h4 style={{ color: '#e65100' }}>2.7 Scopus Citation Score Points</h4>
                 <p style={{ color: '#bf360c' }}>(0.2 point / citation in 2025)</p>
             </div>
@@ -508,7 +509,7 @@ function ScopusCitations({ scopusData, setScopusData, onSave }) {
             </div>
 
             {/* 2.8 h-index Score */}
-            <div className="rd-info-box" style={{ borderLeftColor: '#e87722', background: 'linear-gradient(135deg, #fff3e0, #ffe0b2)', marginTop: 24 }}>
+            <div className="rd-info-box" style={{ borderLeftColor: '#e87722', background: 'linear-gradient(135deg, #fffbeb, #ffe0b2)', marginTop: 24 }}>
                 <h4 style={{ color: '#e65100' }}>2.8 Scopus h-index Score Points</h4>
                 <p style={{ color: '#bf360c' }}>({'<5 → 1pt | 5–10 → 2pt | >10 → 4pt per raise'})</p>
             </div>
@@ -556,6 +557,7 @@ export default function ResearchDashboard() {
     const [activeSubSection, setActiveSubSection] = useState('paper-publication');
     const [researchOpen, setResearchOpen] = useState(true);
     const navigate = useNavigate();
+    const { currentUser, logout } = useAuth();
 
     /* ── State for each section's rows ── */
     const [paperRows, setPaperRows] = useState([
@@ -580,7 +582,7 @@ export default function ResearchDashboard() {
         citationCount: '', hIndex2024: '', hIndex2025: '',
     });
 
-    const handleLogout = () => navigate('/');
+    const handleLogout = () => { logout(); navigate('/'); };
     const handleSave = (sectionName) => alert(`${sectionName} saved successfully!`);
 
     const handleMainNav = (id) => {
@@ -661,7 +663,9 @@ export default function ResearchDashboard() {
                     <h1 className="fd-topbar-title">Research Dashboard</h1>
                     <div className="fd-topbar-actions">
                         <button className="fd-logout-btn" onClick={handleLogout}>Logout</button>
-                        <div className="fd-avatar">👤</div>
+                        <div className="fd-avatar" title={currentUser?.name}>
+                            {currentUser?.name?.[0] || '👤'}
+                        </div>
                     </div>
                 </header>
 
