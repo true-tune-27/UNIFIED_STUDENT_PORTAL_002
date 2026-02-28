@@ -1,18 +1,45 @@
-/* Global reset */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+
 *,
 *::before,
 *::after {
+  box-sizing: border-box;
   margin: 0;
   padding: 0;
-  box-sizing: border-box;
 }
 
-html,
-body,
-#root {
-  width: 100%;
-  height: 100%;
-  font-family: 'Inter', sans-serif;
+:root {
+  --primary: #0f172a;
+  --primary-light: #1e293b;
+  --primary-mid: #475569;
+  --accent: #0284c7;
+  --accent-light: #f0f9ff;
+  --gold: #d97706;
+  --gold-light: #fffbeb;
+  --teal: #0f766e;
+  --teal-light: #f0fdfa;
+  --bg: #f8fafc;
+  --surface: #ffffff;
+  --border: rgba(100, 116, 139, 0.15);
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  --shadow-sm: 0 1px 4px rgba(15, 23, 42, 0.07);
+  --shadow-md: 0 4px 16px rgba(15, 23, 42, 0.10);
+  --shadow-lg: 0 8px 32px rgba(15, 23, 42, 0.13);
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text-primary);
+  min-height: 100vh;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }

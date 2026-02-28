@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './ExpertiseDashboard.css';
+import { useAuth } from './AuthContext';
 import logoEmblem from './assets/logo.png';
 
 /* ── Sidebar nav (shared structure) ── */
@@ -75,6 +76,7 @@ function calcExpertisePoints(type) {
    ══════════════════════════════════════════════════════════════ */
 export default function ExpertiseDashboard() {
     const navigate = useNavigate();
+    const { currentUser, logout } = useAuth();
 
     /* ── 3.1 Faculty Resource Utilization rows ── */
     const [resourceRows, setResourceRows] = useState([
@@ -136,7 +138,7 @@ export default function ExpertiseDashboard() {
         else if (id === 'research') navigate('/research-dashboard');
         else if (id === 'expertise') { /* already here */ }
     };
-    const handleLogout = () => navigate('/');
+    const handleLogout = () => { logout(); navigate('/'); };
 
     return (
         <div className="fd-layout">
@@ -167,7 +169,9 @@ export default function ExpertiseDashboard() {
                     <h1 className="fd-topbar-title">Expertise / Value Addition</h1>
                     <div className="fd-topbar-actions">
                         <button className="fd-logout-btn" onClick={handleLogout}>Logout</button>
-                        <div className="fd-avatar">👤</div>
+                        <div className="fd-avatar" title={currentUser?.name}>
+                            {currentUser?.name?.[0] || '👤'}
+                        </div>
                     </div>
                 </header>
 
