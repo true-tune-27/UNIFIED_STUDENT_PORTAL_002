@@ -4,7 +4,6 @@ import './LoginPage.css';
 import { useAuth } from './AuthContext';
 import { getUserByCredentials } from './auth';
 import logoEmblem from './assets/logo.png';
-import circleSun from './assets/circle.png';
 
 /* ── SVG inline icons ─────────────────────────────────────── */
 const UserIcon = () => (
@@ -160,57 +159,8 @@ export default function LoginPage() {
 
   return (
     <div className="login-page">
-      {/* ═══════ LEFT HALF – About Aditya University ═══════ */}
+      {/* ═══════ LEFT HALF – Login Form ═══════ */}
       <div className="left-panel">
-        <div className="left-content">
-          {/* University logo */}
-          <div className="logo-area">
-            <img src={logoEmblem} alt="Aditya University" className="uni-logo" />
-          </div>
-
-          <h1 className="uni-name">
-            <strong>ADITYA</strong> UNIVERSITY
-          </h1>
-          <p className="uni-tagline">Learning • Innovation • Excellence</p>
-
-          <div className="uni-about">
-            <h2>About Us</h2>
-            <p>
-              Aditya University is a premier institution committed to academic excellence,
-              innovative research, and holistic development. With state-of-the-art facilities
-              and a distinguished faculty, we empower students to become future leaders and
-              change-makers.
-            </p>
-          </div>
-
-          <div className="uni-stats">
-            <div className="stat-item">
-              <span className="stat-number">50,000+</span>
-              <span className="stat-label">Students</span>
-            </div>
-            <div className="stat-item">
-              <span className="stat-number">500+</span>
-              <span className="stat-label">Faculty</span>
-            </div>
-            <div className="stat-item">
-              <span className="stat-number">50+</span>
-              <span className="stat-label">Programs</span>
-            </div>
-          </div>
-        </div>
-
-
-        {/* Decorative elements */}
-        <div className="left-decor-circle left-decor-1"></div>
-        <div className="left-decor-circle left-decor-2"></div>
-      </div>
-
-      {/* ═══════ RIGHT HALF – Login ═══════ */}
-      <div className="right-panel">
-        {/* Rotating sun anchored to left edge */}
-        <div className="sun-edge-spinner">
-          <img src={circleSun} alt="" className="sun-img" />
-        </div>
         <div className="right-content">
           <p className="card-heading">Welcome Back</p>
           <h2 className="card-subheading">
@@ -260,6 +210,55 @@ export default function LoginPage() {
         </div>
 
         <p className="login-footer">© 2026 Aditya University. All rights reserved.</p>
+      </div>
+
+      {/* ═══════ RIGHT SIDE – About Aditya University (35%) ═══════ */}
+      <div className="right-panel">
+        <div className="left-content">
+          {/* University logo */}
+          <div className="logo-area">
+            <img src={logoEmblem} alt="Aditya University" className="uni-logo" />
+          </div>
+
+          <h1 className="uni-name">
+            <strong>ADITYA</strong> UNIVERSITY
+          </h1>
+          <p className="uni-tagline">Learning • Innovation • Excellence</p>
+
+          <div className="uni-about">
+            <h2>About Us</h2>
+            <p>
+              Aditya University is a premier institution committed to academic excellence,
+              innovative research, and holistic development. With state-of-the-art facilities
+              and a distinguished faculty, we empower students to become future leaders and
+              change-makers.
+            </p>
+          </div>
+
+          <div className="uni-stats">
+            <div className="stat-item">
+              <span className="stat-number">50,000+</span>
+              <span className="stat-label">Students</span>
+            </div>
+            <div className="stat-item">
+              <span className="stat-number">500+</span>
+              <span className="stat-label">Faculty</span>
+            </div>
+            <div className="stat-item">
+              <span className="stat-number">50+</span>
+              <span className="stat-label">Programs</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Decorative elements */}
+        <div className="left-decor-circle left-decor-1"></div>
+        <div className="left-decor-circle left-decor-2"></div>
+
+        {/* Floating blobs for visual depth */}
+        <div className="about-blob about-blob-1"></div>
+        <div className="about-blob about-blob-2"></div>
+        <div className="about-blob about-blob-3"></div>
       </div>
     </div>
   );

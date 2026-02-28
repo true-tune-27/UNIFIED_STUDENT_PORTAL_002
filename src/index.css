@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap');
 
 *,
 *::before,
@@ -9,27 +9,29 @@
 }
 
 :root {
-  --primary: #0f172a;
-  --primary-light: #1e293b;
-  --primary-mid: #475569;
-  --accent: #0284c7;
-  --accent-light: #f0f9ff;
-  --gold: #d97706;
-  --gold-light: #fffbeb;
-  --teal: #0f766e;
-  --teal-light: #f0fdfa;
-  --bg: #f8fafc;
+  /* ── Cloud White & Cool Blue Palette ── */
+  --primary: #3a7bd5;
+  --primary-light: #5a9be6;
+  --primary-mid: #6ea8e8;
+  --primary-dark: #2a5faa;
+  --accent: #4a90d9;
+  --accent-light: #e8f4fd;
+  --gold: #5b8ec9;
+  --gold-light: #dceefb;
+  --teal: #4a9ec9;
+  --teal-light: #e0f3fc;
+  --bg: #f0f5ff;
   --surface: #ffffff;
-  --border: rgba(100, 116, 139, 0.15);
-  --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --text-muted: #94a3b8;
-  --shadow-sm: 0 1px 4px rgba(15, 23, 42, 0.07);
-  --shadow-md: 0 4px 16px rgba(15, 23, 42, 0.10);
-  --shadow-lg: 0 8px 32px rgba(15, 23, 42, 0.13);
-  --radius-sm: 8px;
-  --radius-md: 14px;
-  --radius-lg: 20px;
+  --border: rgba(74, 144, 217, 0.12);
+  --text-primary: #1e3a5f;
+  --text-secondary: #4a6d8c;
+  --text-muted: #8baac4;
+  --shadow-sm: 0 1px 4px rgba(58, 123, 213, 0.06);
+  --shadow-md: 0 4px 16px rgba(58, 123, 213, 0.08);
+  --shadow-lg: 0 8px 32px rgba(58, 123, 213, 0.12);
+  --radius-sm: 12px;
+  --radius-md: 18px;
+  --radius-lg: 24px;
 }
 
 html {
@@ -42,4 +44,21 @@ body {
   color: var(--text-primary);
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
+}
+
+/* ── Global Scroll-Reveal Keyframes ── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes floatBlob {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%      { transform: translate(15px, -20px) scale(1.05); }
+  66%      { transform: translate(-10px, 10px) scale(0.97); }
+}
+
+@keyframes subtleGlow {
+  0%, 100% { box-shadow: 0 0 20px rgba(74, 144, 217, 0.08); }
+  50%      { box-shadow: 0 0 35px rgba(74, 144, 217, 0.15); }
 }
