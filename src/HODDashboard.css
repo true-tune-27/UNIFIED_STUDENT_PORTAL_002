@@ -10,13 +10,13 @@
 
 /* Banner */
 .hod-banner {
-    background: linear-gradient(135deg, #0f172a 0%, #1e293b 60%, #475569 100%);
+    background: linear-gradient(135deg, #1e3a5f 0%, #3068b0 60%, #4a6d8c 100%);
     border-radius: 18px;
     padding: 30px 36px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    box-shadow: 0 6px 28px rgba(15, 23, 42, 0.3);
+    box-shadow: 0 6px 28px rgba(58, 123, 213, 0.3);
     position: relative;
     overflow: hidden;
 }
@@ -68,8 +68,8 @@
     display: flex;
     align-items: center;
     gap: 16px;
-    box-shadow: 0 2px 12px rgba(15, 23, 42, 0.06);
-    border: 1px solid rgba(100, 116, 139, 0.1);
+    box-shadow: 0 2px 12px rgba(58, 123, 213, 0.06);
+    border: 1px solid rgba(58, 123, 213, 0.1);
     border-top: 4px solid;
     transition: transform 0.25s ease;
 }
@@ -123,13 +123,13 @@
 }
 
 .hod-status-pill.good {
-    background: #e8f5e9;
-    color: #2e7d32;
+    background: #e0f0ff;
+    color: #2a5faa;
 }
 
 .hod-status-pill.avg {
-    background: #fffbeb;
-    color: #e65100;
+    background: #dceefb;
+    color: #2a5faa;
 }
 
 .hod-status-pill.low {
@@ -139,7 +139,7 @@
 
 /* Role chip in sidebar */
 .hod-role-chip {
-    background: linear-gradient(135deg, #0f172a, #475569);
+    background: linear-gradient(135deg, #1e3a5f, #4a6d8c);
     color: #fff;
     font-family: 'Poppins', sans-serif;
     font-size: 9px;
@@ -147,7 +147,7 @@
     padding: 3px 8px;
     border-radius: 20px;
     letter-spacing: 0.5px;
-    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.4);
+    box-shadow: 0 2px 8px rgba(58, 123, 213, 0.4);
 }
 
 /* Topbar role label */
@@ -156,10 +156,10 @@
     font-size: 12.5px;
     font-weight: 700;
     color: #fff;
-    background: linear-gradient(135deg, #0f172a, #475569);
+    background: linear-gradient(135deg, #1e3a5f, #4a6d8c);
     padding: 7px 16px;
     border-radius: 25px;
-    box-shadow: 0 3px 12px rgba(15, 23, 42, 0.28);
+    box-shadow: 0 3px 12px rgba(58, 123, 213, 0.28);
 }
 
 /* Quick actions */
@@ -176,14 +176,14 @@
     display: flex;
     align-items: center;
     gap: 14px;
-    box-shadow: 0 2px 12px rgba(15, 23, 42, 0.06);
-    border: 1px solid rgba(100, 116, 139, 0.1);
+    box-shadow: 0 2px 12px rgba(58, 123, 213, 0.06);
+    border: 1px solid rgba(58, 123, 213, 0.1);
     transition: all 0.25s ease;
 }
 
 .hod-action-card:hover {
     transform: translateY(-3px);
-    box-shadow: 0 8px 28px rgba(15, 23, 42, 0.12);
+    box-shadow: 0 8px 28px rgba(58, 123, 213, 0.12);
 }
 
 .hod-action-icon {
@@ -195,7 +195,7 @@
     font-family: 'Poppins', sans-serif;
     font-size: 14px;
     font-weight: 700;
-    color: #0f172a;
+    color: #1e3a5f;
     margin: 0;
 }
 
@@ -210,7 +210,7 @@
     margin-left: auto;
     flex-shrink: 0;
     padding: 9px 18px;
-    background: linear-gradient(135deg, #0f172a, #475569);
+    background: linear-gradient(135deg, #1e3a5f, #4a6d8c);
     color: #fff;
     border: none;
     border-radius: 10px;
@@ -219,7 +219,7 @@
     font-weight: 700;
     cursor: pointer;
     transition: all 0.22s ease;
-    box-shadow: 0 3px 12px rgba(15, 23, 42, 0.28);
+    box-shadow: 0 3px 12px rgba(58, 123, 213, 0.28);
 }
 
 .hod-action-btn:hover {
