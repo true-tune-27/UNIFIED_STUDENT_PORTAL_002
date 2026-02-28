@@ -1,0 +1,409 @@
+/* ============================================================
+   SUPER ADMIN DASHBOARD CSS
+   ============================================================ */
+
+.sa-layout {
+    display: flex;
+    min-height: 100vh;
+    font-family: 'Inter', sans-serif;
+    background: #f8fafc;
+}
+
+/* SIDEBAR */
+.sa-sidebar {
+    width: 240px;
+    min-height: 100vh;
+    background: linear-gradient(175deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%);
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 100;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.25);
+}
+
+.sa-sidebar-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 24px 20px 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sa-sidebar-logo {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.15);
+    padding: 4px;
+}
+
+.sa-sidebar-title {
+    display: block;
+    font-family: 'Poppins', sans-serif;
+    font-size: 14px;
+    font-weight: 800;
+    color: #fff;
+}
+
+.sa-sidebar-sub {
+    display: block;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.5);
+    font-weight: 500;
+}
+
+.sa-nav {
+    flex: 1;
+    padding: 18px 12px;
+}
+
+.sa-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 12px 16px;
+    border: none;
+    border-radius: 12px;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.65);
+    font-family: 'Inter', sans-serif;
+    font-size: 13.5px;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.2s ease;
+}
+
+.sa-nav-item--active {
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff;
+}
+
+.sa-nav-icon {
+    font-size: 17px;
+}
+
+.sa-sidebar-footer {
+    padding: 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sa-logout-btn {
+    width: 100%;
+    padding: 10px;
+    background: rgba(255, 82, 82, 0.18);
+    border: 1px solid rgba(255, 82, 82, 0.3);
+    border-radius: 10px;
+    color: #ff8a80;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.sa-logout-btn:hover {
+    background: rgba(255, 82, 82, 0.32);
+    color: #fff;
+}
+
+/* MAIN */
+.sa-main {
+    flex: 1;
+    margin-left: 240px;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.sa-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 36px;
+    height: 72px;
+    background: #fff;
+    border-bottom: 3px solid transparent;
+    border-image: linear-gradient(90deg, #1a1a2e, #e040fb, #d97706) 1;
+    box-shadow: 0 2px 16px rgba(0, 0, 0, 0.06);
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    flex-shrink: 0;
+}
+
+.sa-topbar-title {
+    font-family: 'Poppins', sans-serif;
+    font-size: 19px;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0;
+}
+
+.sa-topbar-sub {
+    font-size: 12.5px;
+    color: #94a3b8;
+    margin: 3px 0 0;
+    font-weight: 500;
+}
+
+.sa-topbar-badge {
+    background: linear-gradient(135deg, #1a1a2e, #0f3460);
+    color: #fff;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    padding: 8px 18px;
+    border-radius: 25px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+}
+
+.sa-content {
+    padding: 28px 36px 48px;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+}
+
+/* STATS */
+.sa-stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+}
+
+.sa-stat-card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 20px 22px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    border-top: 4px solid;
+    transition: transform 0.25s ease;
+}
+
+.sa-stat-card:hover {
+    transform: translateY(-3px);
+}
+
+.sa-stat-icon {
+    font-size: 28px;
+    flex-shrink: 0;
+}
+
+.sa-stat-value {
+    font-family: 'Poppins', sans-serif;
+    font-size: 28px;
+    font-weight: 800;
+    margin: 0;
+    line-height: 1;
+}
+
+.sa-stat-label {
+    font-size: 12px;
+    color: #94a3b8;
+    font-weight: 600;
+    margin: 4px 0 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* TABLE CARD */
+.sa-table-card {
+    background: #fff;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 3px 18px rgba(0, 0, 0, 0.07);
+    border: 1px solid rgba(0, 0, 0, 0.07);
+    animation: sa-fadeIn 0.45s ease-out;
+}
+
+@keyframes sa-fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(14px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.sa-table-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px;
+    border-bottom: 1px solid #f8fafc;
+    background: linear-gradient(135deg, #f8faff, #f8fafc);
+}
+
+.sa-table-title {
+    font-family: 'Poppins', sans-serif;
+    font-size: 18px;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0;
+}
+
+.sa-table-actions {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.sa-saved-msg {
+    font-family: 'Poppins', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: #0f766e;
+    background: #f0f9ff;
+    padding: 7px 14px;
+    border-radius: 20px;
+    animation: sa-fadeIn 0.3s ease;
+}
+
+.sa-save-btn {
+    padding: 10px 24px;
+    background: linear-gradient(135deg, #1a1a2e, #0f3460);
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 700;
+    font-size: 13.5px;
+    cursor: pointer;
+    transition: all 0.22s ease;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+}
+
+.sa-save-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.25);
+}
+
+.sa-table-wrap {
+    overflow-x: auto;
+}
+
+.sa-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+}
+
+.sa-table thead tr {
+    background: linear-gradient(135deg, #1a1a2e, #0f3460);
+}
+
+.sa-table th {
+    padding: 14px 16px;
+    text-align: left;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    color: #f1f5f9;
+    font-size: 11.5px;
+    letter-spacing: 0.7px;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.sa-table td {
+    padding: 14px 16px;
+    border-bottom: 1px solid #f8fafc;
+    color: #475569;
+    vertical-align: middle;
+    transition: background 0.18s;
+}
+
+.sa-table tbody tr:nth-child(even) {
+    background: #fafbff;
+}
+
+.sa-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.sa-table tbody tr:hover {
+    background: #f8fafc !important;
+}
+
+.sa-id-cell {
+    font-family: 'Poppins', sans-serif;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.sa-name-cell {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    color: #0f172a;
+}
+
+.sa-faculty-avatar {
+    width: 34px;
+    height: 34px;
+    background: linear-gradient(135deg, #0f172a, #475569);
+    color: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+.sa-email-cell {
+    font-size: 13px;
+    color: #78909c;
+}
+
+.sa-role-badge {
+    display: inline-block;
+    padding: 5px 14px;
+    border-radius: 20px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.sa-role-select {
+    padding: 9px 14px;
+    border: 2px solid #f1f5f9;
+    border-radius: 10px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: #0f172a;
+    background: #ffffff;
+    outline: none;
+    cursor: pointer;
+    transition: all 0.22s ease;
+}
+
+.sa-role-select:focus {
+    border-color: #475569;
+    box-shadow: 0 0 0 4px rgba(71, 85, 105, 0.1);
+}
+
+@media (max-width: 1000px) {
+    .sa-stats-row {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .sa-main {
+        margin-left: 0;
+    }
+}
