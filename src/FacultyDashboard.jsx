@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './FacultyDashboard.css';
 import logoEmblem from './assets/logo.png';
+import { useAuth } from './AuthContext';
 
-/* ── Sidebar nav items ── */
-const navItems = [
+/* ── Base nav items ── */
+const baseNavItems = [
     { id: 'dashboard', label: 'Dashboard', icon: '📊' },
     { id: 'teaching', label: 'Teaching', icon: '📘' },
     { id: 'research', label: 'Research', icon: '🔬', expandable: true },
@@ -13,27 +14,47 @@ const navItems = [
     { id: 'interpersonal', label: 'Interpersonal', icon: '👥' },
 ];
 
+/* ── Role nav item appended based on adminRole ── */
+const roleNavMap = {
+    Coordinator: { id: 'coordinator', label: 'Coordinator Panel', icon: '🎯', chip: 'COORD', chipColor: '#0f766e' },
+    HOD: { id: 'hod', label: 'HOD Panel', icon: '🏛️', chip: 'HOD', chipColor: '#0f172a' },
+    Dean: { id: 'dean', label: 'Dean Panel', icon: '👑', chip: 'DEAN', chipColor: '#d97706' },
+};
+
 /* ── Category data ── */
 const categories = [
-    { id: 'teaching', label: 'Teaching', max: 80, score: 0, icon: '📋', color: '#ff6b6b' },
-    { id: 'research', label: 'Research', max: 80, score: 0, icon: '📄', color: '#ff8c42' },
-    { id: 'value', label: 'Value Addition', max: 20, score: 0, icon: '📈', color: '#ffa94d' },
-    { id: 'admin', label: 'Administration', max: 20, score: 0, icon: '⚙️', color: '#ff6b6b' },
-    { id: 'interpersonal', label: 'Interpersonal Skills', max: 50, score: 0, icon: '⭐', color: '#ff8c42' },
+    { id: 'teaching', label: 'Teaching', max: 80, score: 0, icon: '📋', color: '#475569' },
+    { id: 'research', label: 'Research', max: 80, score: 0, icon: '📄', color: '#0f766e' },
+    { id: 'value', label: 'Value Addition', max: 20, score: 0, icon: '📈', color: '#d97706' },
+    { id: 'admin', label: 'Administration', max: 20, score: 0, icon: '⚙️', color: '#7e22ce' },
+    { id: 'interpersonal', label: 'Interpersonal Skills', max: 50, score: 0, icon: '⭐', color: '#0284c7' },
 ];
 
 export default function FacultyDashboard() {
     const [activeNav, setActiveNav] = useState('dashboard');
     const navigate = useNavigate();
+    const { currentUser, logout } = useAuth();
+
+    /* ── Build full nav list with optional role item ── */
+    const roleItem = currentUser?.adminRole ? roleNavMap[currentUser.adminRole] : null;
+    const navItems = roleItem ? [...baseNavItems, roleItem] : baseNavItems;
 
     const totalWithout = categories.filter(c => c.id !== 'interpersonal').reduce((s, c) => s + c.score, 0);
     const totalWithoutMax = categories.filter(c => c.id !== 'interpersonal').reduce((s, c) => s + c.max, 0);
     const grandTotal = categories.reduce((s, c) => s + c.score, 0);
     const grandTotalMax = categories.reduce((s, c) => s + c.max, 0);
 
-    const handleLogout = () => {
-        navigate('/');
+    const handleNavClick = (id) => {
+        setActiveNav(id);
+        if (id === 'teaching') navigate('/teaching-dashboard');
+        if (id === 'research') navigate('/research-dashboard');
+        if (id === 'expertise') navigate('/expertise-dashboard');
+        if (id === 'coordinator') navigate('/coordinator-dashboard');
+        if (id === 'hod') navigate('/hod-dashboard');
+        if (id === 'dean') navigate('/dean-dashboard');
     };
+
+    const handleLogout = () => { logout(); navigate('/'); };
 
     return (
         <div className="fd-layout">
@@ -49,29 +70,49 @@ export default function FacultyDashboard() {
                         <button
                             key={item.id}
                             className={`fd-nav-item ${activeNav === item.id ? 'fd-nav-item--active' : ''}`}
-                            onClick={() => {
-                                setActiveNav(item.id);
-                                if (item.id === 'teaching') navigate('/teaching-dashboard');
-                                if (item.id === 'research') navigate('/research-dashboard');
-                                if (item.id === 'expertise') navigate('/expertise-dashboard');
-                            }}
+                            onClick={() => handleNavClick(item.id)}
                         >
                             <span className="fd-nav-icon">{item.icon}</span>
                             <span className="fd-nav-label">{item.label}</span>
                             {item.expandable && <span className="fd-nav-arrow">▾</span>}
+                            {item.chip && (
+                                <span className="fd-role-chip" style={{ background: item.chipColor }}>
+                                    {item.chip}
+                                </span>
+                            )}
                         </button>
                     ))}
                 </nav>
+
+                {/* User info at bottom */}
+                {currentUser && (
+                    <div className="fd-sidebar-user">
+                        <div className="fd-sidebar-user-avatar">{currentUser.name[0]}</div>
+                        <div className="fd-sidebar-user-info">
+                            <span className="fd-sidebar-user-name">{currentUser.name}</span>
+                            <span className="fd-sidebar-user-role">
+                                {currentUser.adminRole ? `Faculty · ${currentUser.adminRole}` : 'Faculty'}
+                            </span>
+                        </div>
+                    </div>
+                )}
             </aside>
 
             {/* ── MAIN CONTENT ── */}
             <main className="fd-main">
                 {/* top bar */}
                 <header className="fd-topbar">
-                    <h1 className="fd-topbar-title">Faculty Portfolio</h1>
+                    <h1 className="fd-topbar-title">Faculty Performance Portfolio</h1>
                     <div className="fd-topbar-actions">
+                        {currentUser?.adminRole && (
+                            <span className="fd-topbar-role-badge">
+                                {roleNavMap[currentUser.adminRole]?.icon} {currentUser.adminRole}
+                            </span>
+                        )}
                         <button className="fd-logout-btn" onClick={handleLogout}>Logout</button>
-                        <div className="fd-avatar">👤</div>
+                        <div className="fd-avatar" title={currentUser?.name}>
+                            {currentUser?.name?.[0] || '👤'}
+                        </div>
                     </div>
                 </header>
 
@@ -80,8 +121,12 @@ export default function FacultyDashboard() {
                     {/* banner */}
                     <div className="fd-banner">
                         <div>
-                            <h2 className="fd-banner-title">Faculty Performance Portfolio</h2>
-                            <p className="fd-banner-sub">Annual Review (2025–26)</p>
+                            <h2 className="fd-banner-title">
+                                Welcome, {currentUser?.name || 'Faculty'}
+                            </h2>
+                            <p className="fd-banner-sub">
+                                {currentUser?.designation || 'Faculty'} · {currentUser?.dept || '—'} · Annual Review (2025–26)
+                            </p>
                         </div>
                     </div>
 
@@ -90,7 +135,7 @@ export default function FacultyDashboard() {
                         {categories.map((cat) => (
                             <div key={cat.id} className="fd-card">
                                 <div className="fd-card-top">
-                                    <span className="fd-card-icon" style={{ background: `${cat.color}20`, color: cat.color }}>
+                                    <span className="fd-card-icon" style={{ background: `${cat.color}18`, color: cat.color }}>
                                         {cat.icon}
                                     </span>
                                     <span className="fd-card-max">Max {cat.max}</span>
@@ -110,24 +155,24 @@ export default function FacultyDashboard() {
                     {/* performance summary */}
                     <div className="fd-section">
                         <h3 className="fd-section-title">Performance Summary</h3>
-
                         <div className="fd-summary-item">
-                            <span className="fd-summary-label">Total Score : {totalWithout} / {totalWithoutMax}</span>
+                            <span className="fd-summary-label">
+                                Total Score (without Interpersonal)
+                                <strong>{totalWithout} / {totalWithoutMax}</strong>
+                            </span>
                             <div className="fd-summary-bar">
-                                <div
-                                    className="fd-summary-bar-fill"
-                                    style={{ width: `${totalWithoutMax > 0 ? (totalWithout / totalWithoutMax) * 100 : 0}%` }}
-                                />
+                                <div className="fd-summary-bar-fill"
+                                    style={{ width: `${totalWithoutMax > 0 ? (totalWithout / totalWithoutMax) * 100 : 0}%` }} />
                             </div>
                         </div>
-
                         <div className="fd-summary-item">
-                            <span className="fd-summary-label">Grand Total : {grandTotal} / {grandTotalMax}</span>
+                            <span className="fd-summary-label">
+                                Grand Total
+                                <strong>{grandTotal} / {grandTotalMax}</strong>
+                            </span>
                             <div className="fd-summary-bar fd-summary-bar--grand">
-                                <div
-                                    className="fd-summary-bar-fill fd-summary-bar-fill--grand"
-                                    style={{ width: `${grandTotalMax > 0 ? (grandTotal / grandTotalMax) * 100 : 0}%` }}
-                                />
+                                <div className="fd-summary-bar-fill fd-summary-bar-fill--grand"
+                                    style={{ width: `${grandTotalMax > 0 ? (grandTotal / grandTotalMax) * 100 : 0}%` }} />
                             </div>
                         </div>
                     </div>

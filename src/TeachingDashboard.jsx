@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './TeachingDashboard.css';
+import { useAuth } from './AuthContext';
 import logoEmblem from './assets/logo.png';
 
 /* ── Sidebar nav items ── */
@@ -169,13 +170,14 @@ export default function TeachingDashboard() {
     const [activeNav, setActiveNav] = useState('teaching');
     const [userId, setUserId] = useState(initialMockData.userId);
     const navigate = useNavigate();
+    const { currentUser, logout } = useAuth();
 
     const [passPercent, setPassPercent] = useState(initialMockData.passPercent);
     const [feedback, setFeedback] = useState(initialMockData.feedback);
     const [proctoring, setProctoring] = useState(initialMockData.proctoring);
     const [coAttainment, setCOAttainment] = useState(initialMockData.coAttainment);
 
-    const handleLogout = () => navigate('/');
+    const handleLogout = () => { logout(); navigate('/'); };
     const handleBack = () => navigate('/faculty-dashboard');
 
     const handleSave = (sectionName) => {
@@ -240,7 +242,9 @@ export default function TeachingDashboard() {
                     <h1 className="fd-topbar-title">Teaching Dashboard</h1>
                     <div className="fd-topbar-actions">
                         <button className="fd-logout-btn" onClick={handleLogout}>Logout</button>
-                        <div className="fd-avatar">👤</div>
+                        <div className="fd-avatar" title={currentUser?.name}>
+                            {currentUser?.name?.[0] || '👤'}
+                        </div>
                     </div>
                 </header>
 
