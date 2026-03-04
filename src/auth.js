@@ -63,6 +63,17 @@ const DEFAULT_USERS = [
         role: 'SuperAdmin',
         adminRole: null,
     },
+    {
+        id: 'STU001',
+        email: 'student@aditya.edu',
+        password: 'student123',
+        name: 'Ravi Kumar',
+        dept: 'CSE',
+        designation: 'Student',
+        phone: '+91 9876543210',
+        role: 'Student',
+        adminRole: null,
+    },
 ];
 
 /* ── Load users from localStorage (persists role assignments) ── */
@@ -81,9 +92,14 @@ function saveUsers(users) {
     } catch (_) { /* ignore */ }
 }
 
-/* ── Init users on first load ── */
+/* ── Init users — always merge any missing defaults ── */
 export function initUsers() {
-    if (!localStorage.getItem(LS_KEY)) {
+    const stored = loadUsers();
+    const storedIds = new Set(stored.map(u => u.id));
+    const missing = DEFAULT_USERS.filter(u => !storedIds.has(u.id));
+    if (missing.length > 0) {
+        saveUsers([...stored, ...missing]);
+    } else if (!localStorage.getItem(LS_KEY)) {
         saveUsers(DEFAULT_USERS);
     }
 }

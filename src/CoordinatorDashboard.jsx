@@ -1,8 +1,9 @@
-import { useState, useMemo, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import './CoordinatorDashboard.css';
 import logoEmblem from './assets/logo.png';
 import { useAuth } from './AuthContext';
+import { getEventRegistrations, saveEventStatus } from './db';
 
 /* ══════════════════════════════════════════════════════════════
    MOCK DATA – Events & Registered Students
@@ -12,6 +13,7 @@ const YEARS = ['I', 'II', 'III', 'IV'];
 const SECTIONS = ['A', 'B', 'C', 'D'];
 const NATURES = ['Workshop', 'Seminar', 'Cultural', 'Technical', 'Sports', 'Webinar', 'Hackathon'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const VENUES = ['KL Rao Bhavan', 'Seminar Hall A', 'Seminar Hall B', 'Auditorium', 'Sports Complex', 'Open Air Theatre', 'Library Hall', 'Lab Block'];
 
 function randomFrom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
@@ -34,21 +36,26 @@ function generateStudents(count, eventDate) {
             rollNo: `${branch.substring(0, 2).toUpperCase()}${String(2020 + Math.floor(Math.random() * 6)).slice(2)}${String(Math.floor(Math.random() * 9000) + 1000)}`,
             branch,
             year,
-            section,
             phone: `+91 ${String(Math.floor(Math.random() * 9000000000) + 1000000000)}`,
             email: `${fn.toLowerCase()}.${ln.toLowerCase()}@aditya.edu.in`,
             registeredDate: eventDate,
+            isWinner: false,
         });
     }
     return students;
 }
 
+const DEFAULT_CRITERIA = { gender: 'all', years: [], branches: [], nationalities: [], regions: [], isPaid: false, fee: 0 };
+
 const INITIAL_EVENTS = [
-    { id: 1, name: 'AI Workshop 2026', nature: 'Workshop', date: '2026-02-15', facultyName: 'Dr. T. Neelima', registrationOpen: true, students: generateStudents(25, '2026-02-15') },
-    { id: 2, name: 'Cultural Fest', nature: 'Cultural', date: '2026-02-20', facultyName: 'Dr. T. Neelima', registrationOpen: true, students: generateStudents(40, '2026-02-20') },
-    { id: 3, name: 'Tech Seminar', nature: 'Seminar', date: '2026-03-05', facultyName: 'Dr. T. Neelima', registrationOpen: false, students: generateStudents(18, '2026-03-05') },
-    { id: 4, name: 'Hackathon 2026', nature: 'Hackathon', date: '2026-03-15', facultyName: 'Dr. T. Neelima', registrationOpen: true, students: generateStudents(50, '2026-03-15') },
-    { id: 5, name: 'Sports Day', nature: 'Sports', date: '2026-01-28', facultyName: 'Dr. T. Neelima', registrationOpen: false, students: generateStudents(35, '2026-01-28') },
+    { id: 1, name: 'AI Workshop 2026', nature: 'Workshop', date: '2026-02-15', venue: 'Seminar Hall A', club: 'AI Club', coordinator: 'Dr. Smith', description: 'Workshop on AI fundamentals', facultyName: 'Dr. T. Neelima', registrationOpen: true, criteria: { ...DEFAULT_CRITERIA }, students: generateStudents(25, '2026-02-15') },
+    { id: 2, name: 'Cultural Fest', nature: 'Cultural', date: '2026-02-20', venue: 'Auditorium', club: 'Cultural Club', coordinator: 'Dr. Priya', description: 'Annual cultural festival', facultyName: 'Dr. T. Neelima', registrationOpen: true, criteria: { ...DEFAULT_CRITERIA, gender: 'female', regions: ['Kerala', 'Andhra Pradesh'] }, students: generateStudents(40, '2026-02-20') },
+    { id: 3, name: 'Tech Seminar', nature: 'Seminar', date: '2026-03-05', venue: 'KL Rao Bhavan', club: 'Tech Club', coordinator: 'Dr. Ravi', description: 'Technical seminar on emerging tech', facultyName: 'Dr. T. Neelima', registrationOpen: false, criteria: { ...DEFAULT_CRITERIA }, students: generateStudents(18, '2026-03-05') },
+    { id: 4, name: 'Hackathon 2026', nature: 'Hackathon', date: '2026-03-15', venue: 'Lab Block', club: 'Coding Club', coordinator: 'Dr. Kumar', description: '24-hour coding hackathon', facultyName: 'Dr. T. Neelima', registrationOpen: true, criteria: { ...DEFAULT_CRITERIA, isPaid: true, fee: 200 }, students: generateStudents(50, '2026-03-15') },
+    { id: 5, name: 'Sports Day', nature: 'Sports', date: '2026-01-28', venue: 'Sports Complex', club: 'Sports Club', coordinator: 'Dr. Singh', description: 'Annual sports meet', facultyName: 'Dr. T. Neelima', registrationOpen: false, criteria: { ...DEFAULT_CRITERIA, gender: 'male', years: ['II', 'III', 'IV'] }, students: generateStudents(35, '2026-01-28') },
+    { id: 6, name: 'Web Dev Bootcamp', nature: 'Workshop', date: '2026-03-08', venue: 'Lab Block', club: 'Web Dev Club', coordinator: 'Dr. Meena', description: 'Full-stack web development bootcamp', facultyName: 'Dr. T. Neelima', registrationOpen: true, criteria: { ...DEFAULT_CRITERIA, nationalities: ['Indian'], isPaid: true, fee: 150 }, students: generateStudents(30, '2026-03-08') },
+    { id: 7, name: 'IoT Expo', nature: 'Technical', date: '2026-03-22', venue: 'KL Rao Bhavan', club: 'IoT Club', coordinator: 'Dr. Arjun', description: 'Internet of Things exhibition', facultyName: 'Dr. T. Neelima', registrationOpen: true, criteria: { ...DEFAULT_CRITERIA }, students: generateStudents(20, '2026-03-22') },
+    { id: 8, name: 'Robotics Challenge', nature: 'Technical', date: '2026-04-05', venue: 'Lab Block', club: 'Robotics Club', coordinator: 'Dr. Lakshmi', description: 'Inter-college robotics competition', facultyName: 'Dr. T. Neelima', registrationOpen: true, criteria: { ...DEFAULT_CRITERIA, nationalities: ['Indian', 'Nepali', 'Zimbabwean'], years: ['III', 'IV'], isPaid: true, fee: 500 }, students: generateStudents(15, '2026-04-05') },
 ];
 
 const INITIAL_MEMBERS = [
@@ -68,6 +75,7 @@ const ALL_COLUMNS = [
     { key: 'phone', label: 'Phone', sortable: false },
     { key: 'email', label: 'Email', sortable: true },
     { key: 'registeredDate', label: 'Reg. Date', sortable: true },
+    { key: 'isWinner', label: 'Winner?', sortable: false },
 ];
 
 const ROWS_PER_PAGE = 15;
@@ -77,18 +85,47 @@ const ROWS_PER_PAGE = 15;
    ══════════════════════════════════════════════════════════════ */
 export default function CoordinatorDashboard({ embedded = false }) {
     const navigate = useNavigate();
+    const { logout } = useAuth();
 
     /* ── sidebar state ── */
     const [events, setEvents] = useState(INITIAL_EVENTS);
     const [selectedEventId, setSelectedEventId] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
-    const [newEventName, setNewEventName] = useState('');
-    const [newEventNature, setNewEventNature] = useState('');
-    const [newEventDate, setNewEventDate] = useState('');
-    const [newFacultyName, setNewFacultyName] = useState('Dr. T. Neelima');
     const [openYears, setOpenYears] = useState({ '2026': true });
     const [openMonths, setOpenMonths] = useState({});
 
+    /* ── live DB sync: merge student registrations from shared localStorage ── */
+    const [liveDbRegs, setLiveDbRegs] = useState(() => {
+        try { const r = localStorage.getItem('aditya_event_registrations_v1'); return r ? JSON.parse(r) : []; } catch { return []; }
+    });
+
+    useEffect(() => {
+        const onStorage = () => {
+            try {
+                const raw = localStorage.getItem('aditya_event_registrations_v1');
+                setLiveDbRegs(raw ? JSON.parse(raw) : []);
+            } catch { setLiveDbRegs([]); }
+        };
+        window.addEventListener('storage', onStorage);
+        // also poll every 2s for same-tab updates
+        const timer = setInterval(onStorage, 2000);
+        return () => { window.removeEventListener('storage', onStorage); clearInterval(timer); };
+    }, []);
+
+    /* merge live DB students into an event's students array */
+    const mergeEventStudents = useCallback((ev) => {
+        const dbStudents = liveDbRegs.filter(r => r.eventId === ev.id);
+        const existingRolls = new Set(ev.students.map(s => s.rollNo));
+        const newStudents = dbStudents
+            .filter(r => !existingRolls.has(r.rollNo))
+            .map(r => ({
+                id: r._id, name: r.studentName, rollNo: r.rollNo,
+                branch: r.branch, year: r.year, phone: r.phone,
+                email: r.email, registeredDate: r.registeredAt?.slice(0, 10),
+                isWinner: r.isWinner || false, isLive: true,
+            }));
+        return { ...ev, students: [...ev.students, ...newStudents] };
+    }, [liveDbRegs]);
     /* ── edit event state ── */
     const [editingEventId, setEditingEventId] = useState(null);
     const [editName, setEditName] = useState('');
@@ -114,11 +151,57 @@ export default function CoordinatorDashboard({ embedded = false }) {
     const [visibleCols, setVisibleCols] = useState(ALL_COLUMNS.map(c => c.key));
     const [currentPage, setCurrentPage] = useState(1);
 
-    /* ── active tab ── */
-    const [activeTab, setActiveTab] = useState('events'); // 'events' | 'calendar'
+    const location = useLocation();
+
+    /* ── active section & dropdown ── */
+    const [activeSection, setActiveSection] = useState(location.state?.section || 'dashboard'); // 'upcoming' | 'calendar' | 'dashboard'
+    const [eventsDropdownOpen, setEventsDropdownOpen] = useState(true);
+
+    /* ── calendar navigation ── */
+    const [calMonth, setCalMonth] = useState(new Date().getMonth());
+    const [calYear, setCalYear] = useState(new Date().getFullYear());
+    const [calFilter, setCalFilter] = useState('all');
+
+    const [showUploadModal, setShowUploadModal] = useState(false);
+    const [showNewEventModal, setShowNewEventModal] = useState(false);
+    const [showModifyModal, setShowModifyModal] = useState(false);
+    const [showCertificateModal, setShowCertificateModal] = useState(false);
+
+    /* ── registration criteria modal state ── */
+    const [showCriteriaModal, setShowCriteriaModal] = useState(false);
+    const [criteriaEventId, setCriteriaEventId] = useState(null);
+    /* draft criteria fields */
+    const [draftGender, setDraftGender] = useState('all');
+    const [draftYears, setDraftYears] = useState([]);
+    const [draftBranches, setDraftBranches] = useState([]);
+    const [draftNationalities, setDraftNationalities] = useState([]);
+    const [draftRegions, setDraftRegions] = useState([]);
+    const [draftIsPaid, setDraftIsPaid] = useState(false);
+    const [draftFee, setDraftFee] = useState(0);
+    const [draftNatInput, setDraftNatInput] = useState('');
+    const [draftRegInput, setDraftRegInput] = useState('');
+
+    /* ── new event form (calendar) ── */
+    const [newEvName, setNewEvName] = useState('');
+    const [newEvDate, setNewEvDate] = useState('');
+    const [newEvVenue, setNewEvVenue] = useState('KL Rao Bhavan');
+    const [newEvClub, setNewEvClub] = useState('');
+    const [newEvCoordinator, setNewEvCoordinator] = useState('');
+    const [newEvDescription, setNewEvDescription] = useState('');
+
+    /* ── modify event form ── */
+    const [modifyEventId, setModifyEventId] = useState(null);
+    const [modifyName, setModifyName] = useState('');
+    const [modifyDate, setModifyDate] = useState('');
+    const [modifyVenue, setModifyVenue] = useState('KL Rao Bhavan');
+    const [modifyClub, setModifyClub] = useState('');
+    const [modifyCoordinator, setModifyCoordinator] = useState('');
 
     /* ── derived ── */
-    const selectedEvent = events.find(e => e.id === selectedEventId) || null;
+    const selectedEvent = useMemo(() => {
+        const ev = events.find(e => e.id === selectedEventId) || null;
+        return ev ? mergeEventStudents(ev) : null;
+    }, [events, selectedEventId, mergeEventStudents]);
 
     /* ── events grouped by year/month ── */
     const eventTree = useMemo(() => {
@@ -194,23 +277,6 @@ export default function CoordinatorDashboard({ embedded = false }) {
     const pageData = processedData.slice((currentPage - 1) * ROWS_PER_PAGE, currentPage * ROWS_PER_PAGE);
 
     /* ── handlers ── */
-    const handleCreateEvent = () => {
-        if (!newEventName.trim() || !newEventDate) return;
-        const newEv = {
-            id: Date.now(),
-            name: newEventName.trim(),
-            nature: newEventNature || 'Workshop',
-            date: newEventDate,
-            facultyName: newFacultyName || 'Dr. T. Neelima',
-            registrationOpen: true,
-            students: [],
-        };
-        setEvents(prev => [...prev, newEv]);
-        setNewEventName('');
-        setNewEventNature('');
-        setNewEventDate('');
-        setSelectedEventId(newEv.id);
-    };
 
     /* ── edit event handlers ── */
     const startEditEvent = (ev) => {
@@ -242,35 +308,99 @@ export default function CoordinatorDashboard({ embedded = false }) {
         setDeleteConfirmId(null);
     };
 
-    /* ── upload events from CSV ── */
-    const handleUploadEvents = (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-            const text = ev.target.result;
-            const lines = text.split('\n').filter(l => l.trim());
-            const parsed = lines.slice(1).map((line, idx) => {
-                const cols = line.split(',').map(s => s.trim().replace(/"/g, ''));
-                return {
-                    id: Date.now() + idx,
-                    name: cols[0] || 'Imported Event',
-                    nature: cols[1] || 'Workshop',
-                    date: cols[2] || new Date().toISOString().split('T')[0],
-                    facultyName: cols[3] || 'Dr. T. Neelima',
-                    registrationOpen: true,
-                    students: [],
-                };
-            });
-            if (parsed.length > 0) setEvents(prev => [...prev, ...parsed]);
-        };
-        reader.readAsText(file);
-        e.target.value = '';
-    };
+
 
     const toggleRegistration = () => {
         if (!selectedEventId) return;
-        setEvents(prev => prev.map(e => e.id === selectedEventId ? { ...e, registrationOpen: !e.registrationOpen } : e));
+        const ev = events.find(e => e.id === selectedEventId);
+        if (!ev) return;
+        if (ev.registrationOpen) {
+            // closing: direct toggle
+            setEvents(prev => prev.map(e => e.id === selectedEventId ? { ...e, registrationOpen: false } : e));
+            saveEventStatus(selectedEventId, { registrationOpen: false });
+        } else {
+            // opening: show criteria modal first
+            const c = ev.criteria || DEFAULT_CRITERIA;
+            setCriteriaEventId(ev.id);
+            setDraftGender(c.gender || 'all');
+            setDraftYears(c.years || []);
+            setDraftBranches(c.branches || []);
+            setDraftNationalities(c.nationalities || []);
+            setDraftRegions(c.regions || []);
+            setDraftIsPaid(c.isPaid || false);
+            setDraftFee(c.fee || 0);
+            setDraftNatInput('');
+            setDraftRegInput('');
+            setShowCriteriaModal(true);
+        }
+    };
+
+    const handleSaveCriteria = () => {
+        setEvents(prev => prev.map(e =>
+            e.id === criteriaEventId
+                ? {
+                    ...e,
+                    registrationOpen: true,
+                    criteria: {
+                        gender: draftGender,
+                        years: draftYears,
+                        branches: draftBranches,
+                        nationalities: draftNationalities,
+                        regions: draftRegions,
+                        isPaid: draftIsPaid,
+                        fee: draftIsPaid ? Number(draftFee) : 0,
+                    }
+                }
+                : e
+        ));
+        setShowCriteriaModal(false);
+        setCriteriaEventId(null);
+        // persist to shared DB so student dashboard reflects the new status
+        saveEventStatus(criteriaEventId, {
+            registrationOpen: true,
+            criteria: {
+                gender: draftGender,
+                years: draftYears,
+                branches: draftBranches,
+                nationalities: draftNationalities,
+                regions: draftRegions,
+                isPaid: draftIsPaid,
+                fee: draftIsPaid ? Number(draftFee) : 0,
+            }
+        });
+    };
+
+    /* toggle helpers for year/branch multi-select */
+    const toggleDraftYear = (yr) => setDraftYears(prev => prev.includes(yr) ? prev.filter(y => y !== yr) : [...prev, yr]);
+    const toggleDraftBranch = (br) => setDraftBranches(prev => prev.includes(br) ? prev.filter(b => b !== br) : [...prev, br]);
+
+    /* tag input helpers */
+    const addNatTag = () => {
+        const v = draftNatInput.trim();
+        if (!v || draftNationalities.includes(v)) return;
+        setDraftNationalities(prev => [...prev, v]);
+        setDraftNatInput('');
+    };
+    const addRegTag = () => {
+        const v = draftRegInput.trim();
+        if (!v || draftRegions.includes(v)) return;
+        setDraftRegions(prev => [...prev, v]);
+        setDraftRegInput('');
+    };
+
+    const toggleWinner = (studentId) => {
+        if (!selectedEventId) return;
+        setEvents(prev => prev.map(e => {
+            if (e.id !== selectedEventId) return e;
+            return {
+                ...e,
+                students: e.students.map(s => s.id === studentId ? { ...s, isWinner: !s.isWinner } : s)
+            };
+        }));
+    };
+
+    const handleGenerateCertificates = () => {
+        setShowCertificateModal(true);
     };
 
     const handleFilterChange = (key, val) => {
@@ -335,22 +465,101 @@ export default function CoordinatorDashboard({ embedded = false }) {
     const toggleYear = (yr) => setOpenYears(prev => ({ ...prev, [yr]: !prev[yr] }));
     const toggleMonth = (key) => setOpenMonths(prev => ({ ...prev, [key]: !prev[key] }));
 
-    /* ── calendar view data ── */
-    const calendarEvents = useMemo(() => {
-        const now = new Date();
-        const year = now.getFullYear();
-        const month = now.getMonth();
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-        const firstDay = new Date(year, month, 1).getDay();
+    /* ── calendar view data (navigable) ── */
+    const calendarData = useMemo(() => {
+        const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+        const firstDay = new Date(calYear, calMonth, 1).getDay();
         const days = [];
         for (let i = 0; i < firstDay; i++) days.push(null);
         for (let d = 1; d <= daysInMonth; d++) {
-            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            const dateStr = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
             const dayEvents = events.filter(ev => ev.date === dateStr);
             days.push({ day: d, date: dateStr, events: dayEvents });
         }
-        return { year, month, days };
+        return days;
+    }, [events, calMonth, calYear]);
+
+    /* ── filtered events for calendar sidebar ── */
+    const filteredCalEvents = useMemo(() => {
+        const now = new Date(); now.setHours(0, 0, 0, 0);
+        switch (calFilter) {
+            case 'upcoming': return events.filter(e => new Date(e.date) >= now);
+            case 'modified': return events.filter(e => e.modified);
+            case 'completed': return events.filter(e => new Date(e.date) < now);
+            default: return events;
+        }
+    }, [events, calFilter]);
+
+    /* ── upcoming events with urgency ── */
+    const upcomingEvents = useMemo(() => {
+        const now = new Date(); now.setHours(0, 0, 0, 0);
+        return events
+            .filter(e => new Date(e.date) >= now)
+            .sort((a, b) => new Date(a.date) - new Date(b.date))
+            .map(e => {
+                const diff = Math.ceil((new Date(e.date) - now) / (1000 * 60 * 60 * 24));
+                let urgency = 'scheduled';
+                if (diff <= 10) urgency = 'critical';
+                else if (diff <= 15) urgency = 'warning';
+                else if (diff <= 30) urgency = 'approaching';
+                return { ...e, daysUntil: diff, urgency };
+            });
     }, [events]);
+
+    /* ── calendar month navigation ── */
+    const prevMonth = () => {
+        if (calMonth === 0) { setCalMonth(11); setCalYear(y => y - 1); }
+        else setCalMonth(m => m - 1);
+    };
+    const nextMonth = () => {
+        if (calMonth === 11) { setCalMonth(0); setCalYear(y => y + 1); }
+        else setCalMonth(m => m + 1);
+    };
+
+    /* ── new event from calendar modal ── */
+    const handleAddNewEvent = () => {
+        if (!newEvName.trim() || !newEvDate) return;
+        const newEv = {
+            id: Date.now(), name: newEvName.trim(), nature: 'Workshop', date: newEvDate,
+            venue: newEvVenue, club: newEvClub, coordinator: newEvCoordinator,
+            description: newEvDescription, facultyName: newEvCoordinator || 'Dr. T. Neelima',
+            registrationOpen: true, students: [],
+        };
+        setEvents(prev => [...prev, newEv]);
+        setShowNewEventModal(false);
+        setNewEvName(''); setNewEvDate(''); setNewEvVenue('KL Rao Bhavan');
+        setNewEvClub(''); setNewEvCoordinator(''); setNewEvDescription('');
+    };
+
+    /* ── modify event handler ── */
+    const handleModifyEvent = () => {
+        if (!modifyEventId) return;
+        setEvents(prev => prev.map(e =>
+            e.id === modifyEventId
+                ? { ...e, name: modifyName, date: modifyDate, venue: modifyVenue, club: modifyClub, coordinator: modifyCoordinator, modified: true }
+                : e
+        ));
+        setShowModifyModal(false);
+    };
+
+    const openModifyModal = () => {
+        setShowModifyModal(true);
+        if (events.length > 0) {
+            const ev = events[0];
+            setModifyEventId(ev.id); setModifyName(ev.name); setModifyDate(ev.date);
+            setModifyVenue(ev.venue || 'KL Rao Bhavan'); setModifyClub(ev.club || '');
+            setModifyCoordinator(ev.coordinator || ev.facultyName || '');
+        }
+    };
+
+    const selectModifyEvent = (id) => {
+        const ev = events.find(e => e.id === parseInt(id));
+        if (ev) {
+            setModifyEventId(ev.id); setModifyName(ev.name); setModifyDate(ev.date);
+            setModifyVenue(ev.venue || 'KL Rao Bhavan'); setModifyClub(ev.club || '');
+            setModifyCoordinator(ev.coordinator || ev.facultyName || '');
+        }
+    };
 
     /* ══════════════════════════════════════════════════════════════
        RENDER
@@ -358,60 +567,39 @@ export default function CoordinatorDashboard({ embedded = false }) {
     /* ── Embedded mode: just main content, no sidebar/layout wrapper ── */
     const sidebarJSX = (
         <aside className="cd-sidebar">
-            {/* header */}
-            <div className="cd-sidebar-header">
+            {/* header + dropdown */}
+            <div className="cd-sidebar-header" onClick={() => setEventsDropdownOpen(v => !v)} style={{ cursor: 'pointer' }}>
                 <img src={logoEmblem} alt="Club" className="cd-sidebar-logo" />
                 <div className="cd-sidebar-info">
                     <h2>Coordinator Panel</h2>
                     <p>HEAD: {profile.name.toUpperCase()}</p>
                 </div>
+                <span className={`cd-dropdown-arrow ${eventsDropdownOpen ? 'open' : ''}`}>▶</span>
             </div>
 
-            {/* tabs */}
-            <div className="cd-sidebar-tabs">
-                <button className={`cd-sidebar-tab ${activeTab === 'events' ? 'active' : ''}`} onClick={() => setActiveTab('events')}>
-                    📋 Events
-                </button>
-                <button className={`cd-sidebar-tab ${activeTab === 'calendar' ? 'active' : ''}`} onClick={() => setActiveTab('calendar')}>
-                    📅 Calendar
-                </button>
-            </div>
+            {/* dropdown items */}
+            {eventsDropdownOpen && (
+                <div className="cd-dropdown-items">
+                    <button className={`cd-dropdown-item ${activeSection === 'upcoming' ? 'active' : ''}`} onClick={() => setActiveSection('upcoming')}>
+                        <span className="cd-dropdown-item-icon">🔔</span> Upcoming Events
+                    </button>
+                    <button className={`cd-dropdown-item ${activeSection === 'calendar' ? 'active' : ''}`} onClick={() => setActiveSection('calendar')}>
+                        <span className="cd-dropdown-item-icon">📅</span> Event Calendar
+                    </button>
+                    <button className={`cd-dropdown-item ${activeSection === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveSection('dashboard')}>
+                        <span className="cd-dropdown-item-icon">📊</span> Events Dashboard
+                    </button>
+                </div>
+            )}
 
-            {activeTab === 'events' && (
+            {activeSection === 'dashboard' && (
                 <>
                     {/* search */}
                     <div className="cd-search">
                         <div className="cd-search-wrap">
                             <span className="cd-search-icon">🔍</span>
-                            <input
-                                placeholder="Search events..."
-                                value={searchTerm}
-                                onChange={e => setSearchTerm(e.target.value)}
-                            />
+                            <input placeholder="Search events..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
                         </div>
-                    </div>
-
-                    {/* event form */}
-                    <div className="cd-event-form">
-                        <input placeholder="New Event Name" value={newEventName} onChange={e => setNewEventName(e.target.value)} />
-                        <input
-                            placeholder="Nature of Event (e.g. Workshop)"
-                            list="nature-list"
-                            value={newEventNature}
-                            onChange={e => setNewEventNature(e.target.value)}
-                        />
-                        <datalist id="nature-list">
-                            {NATURES.map(n => <option key={n} value={n} />)}
-                        </datalist>
-                        <input type="date" value={newEventDate} onChange={e => setNewEventDate(e.target.value)} />
-                        <input placeholder="Faculty Name" value={newFacultyName} onChange={e => setNewFacultyName(e.target.value)} />
-                        <button className="cd-upload-btn" onClick={handleCreateEvent}>
-                            ➕ Create Event
-                        </button>
-                        <label className="cd-import-events-btn">
-                            📤 Import Events (CSV)
-                            <input type="file" accept=".csv" style={{ display: 'none' }} onChange={handleUploadEvents} />
-                        </label>
                     </div>
 
                     {/* event tree */}
@@ -421,9 +609,7 @@ export default function CoordinatorDashboard({ embedded = false }) {
                                 <button className="cd-tree-year-btn" onClick={() => toggleYear(yr)}>
                                     <span className={`arrow ${openYears[yr] ? 'open' : ''}`}>▶</span>
                                     {yr}
-                                    <span className="cd-tree-year-count">
-                                        {Object.values(eventTree[yr]).reduce((s, arr) => s + arr.length, 0)}
-                                    </span>
+                                    <span className="cd-tree-year-count">{Object.values(eventTree[yr]).reduce((s, arr) => s + arr.length, 0)}</span>
                                 </button>
                                 {openYears[yr] && (
                                     <div className="cd-tree-months">
@@ -440,10 +626,7 @@ export default function CoordinatorDashboard({ embedded = false }) {
                                                         <div className="cd-tree-events">
                                                             {eventTree[yr][mo].map(ev => (
                                                                 <div key={ev.id} className={`cd-tree-event-row ${selectedEventId === ev.id ? 'active' : ''}`}>
-                                                                    <button
-                                                                        className="cd-tree-event"
-                                                                        onClick={() => { setSelectedEventId(ev.id); setCurrentPage(1); setSortStack([]); setFilters({}); }}
-                                                                    >
+                                                                    <button className="cd-tree-event" onClick={() => { setSelectedEventId(ev.id); setCurrentPage(1); setSortStack([]); setFilters({}); }}>
                                                                         <span className={`cd-tree-event-dot ${ev.registrationOpen ? 'open' : 'closed'}`} />
                                                                         <span className="cd-tree-event-name">{ev.name}</span>
                                                                         <span className="cd-tree-event-count">{ev.students.length}</span>
@@ -465,38 +648,6 @@ export default function CoordinatorDashboard({ embedded = false }) {
                         ))}
                     </div>
                 </>
-            )}
-
-            {activeTab === 'calendar' && (
-                <div className="cd-calendar-view">
-                    <div className="cd-calendar-header">
-                        <h3>{MONTHS[calendarEvents.month]} {calendarEvents.year}</h3>
-                    </div>
-                    <div className="cd-calendar-grid">
-                        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
-                            <div key={d} className="cd-calendar-day-label">{d}</div>
-                        ))}
-                        {calendarEvents.days.map((cell, i) => (
-                            <div key={i} className={`cd-calendar-cell ${cell ? '' : 'empty'} ${cell?.events.length > 0 ? 'has-events' : ''}`}>
-                                {cell && (
-                                    <>
-                                        <span className="cd-calendar-day-num">{cell.day}</span>
-                                        {cell.events.map(ev => (
-                                            <div
-                                                key={ev.id}
-                                                className={`cd-calendar-event-pill ${ev.registrationOpen ? 'open' : 'closed'}`}
-                                                onClick={() => { setSelectedEventId(ev.id); setActiveTab('events'); setCurrentPage(1); setSortStack([]); setFilters({}); }}
-                                                title={ev.name}
-                                            >
-                                                {ev.name.length > 10 ? ev.name.slice(0, 10) + '…' : ev.name}
-                                            </div>
-                                        ))}
-                                    </>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                </div>
             )}
 
             {/* footer */}
@@ -551,320 +702,744 @@ export default function CoordinatorDashboard({ embedded = false }) {
                     </div>
                 </div>
             )}
+            {/* Upload Method Modal */}
+            {showUploadModal && (
+                <div className="cd-modal-overlay" onClick={() => setShowUploadModal(false)}>
+                    <div className="cd-modal" onClick={e => e.stopPropagation()}>
+                        <button className="cd-modal-close" onClick={() => setShowUploadModal(false)}>×</button>
+                        <h3 className="cd-modal-title" style={{ textAlign: 'center' }}>Select Upload Method</h3>
+                        <div className="cd-upload-grid">
+                            <button className="cd-upload-card" onClick={() => { /* PDF upload */ }}>
+                                <span className="cd-upload-card-icon" style={{ color: '#e53935' }}>📄</span>
+                                <span>Upload PDF</span>
+                            </button>
+                            <button className="cd-upload-card" onClick={() => { /* Word upload */ }}>
+                                <span className="cd-upload-card-icon" style={{ color: '#1565c0' }}>📝</span>
+                                <span>Upload Word Doc</span>
+                            </button>
+                            <button className="cd-upload-card" onClick={() => { /* Excel upload */ }}>
+                                <span className="cd-upload-card-icon" style={{ color: '#2e7d32' }}>📊</span>
+                                <span>Upload Excel Sheet</span>
+                            </button>
+                            <button className="cd-upload-card" onClick={() => { setShowUploadModal(false); setShowNewEventModal(true); }}>
+                                <span className="cd-upload-card-icon" style={{ color: '#f57c00' }}>📋</span>
+                                <span>Upload New Event</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* New Event Modal */}
+            {showNewEventModal && (
+                <div className="cd-modal-overlay" onClick={() => setShowNewEventModal(false)}>
+                    <div className="cd-modal" onClick={e => e.stopPropagation()}>
+                        <button className="cd-modal-close" onClick={() => setShowNewEventModal(false)}>×</button>
+                        <h3 className="cd-modal-title">Upload New Event</h3>
+                        <div className="cd-modal-body">
+                            <label>Event Name</label>
+                            <input placeholder="e.g. AI Hackathon" value={newEvName} onChange={e => setNewEvName(e.target.value)} />
+                            <label>Date</label>
+                            <input type="date" value={newEvDate} onChange={e => setNewEvDate(e.target.value)} />
+                            <label>Venue</label>
+                            <select value={newEvVenue} onChange={e => setNewEvVenue(e.target.value)} className="cd-modal-select">
+                                {VENUES.map(v => <option key={v} value={v}>{v}</option>)}
+                            </select>
+                            <label>Club / Department</label>
+                            <input placeholder="e.g. Eco Club" value={newEvClub} onChange={e => setNewEvClub(e.target.value)} />
+                            <label>Coordinator</label>
+                            <input placeholder="e.g. Dr. Smith" value={newEvCoordinator} onChange={e => setNewEvCoordinator(e.target.value)} />
+                            <label>Description</label>
+                            <textarea placeholder="Brief event details..." value={newEvDescription} onChange={e => setNewEvDescription(e.target.value)} className="cd-modal-textarea" />
+                        </div>
+                        <button className="cd-modal-full-btn" onClick={handleAddNewEvent}>Add Event</button>
+                    </div>
+                </div>
+            )}
+            {/* Modify Event Modal */}
+            {showModifyModal && (
+                <div className="cd-modal-overlay" onClick={() => setShowModifyModal(false)}>
+                    <div className="cd-modal" onClick={e => e.stopPropagation()}>
+                        <button className="cd-modal-close" onClick={() => setShowModifyModal(false)}>×</button>
+                        <h3 className="cd-modal-title">Modify Event</h3>
+                        <div className="cd-modal-body">
+                            <label style={{ color: '#c62828' }}>Select Event to Modify</label>
+                            <select value={modifyEventId || ''} onChange={e => selectModifyEvent(e.target.value)} className="cd-modal-select">
+                                {events.map(ev => <option key={ev.id} value={ev.id}>{ev.name} ({ev.date})</option>)}
+                            </select>
+                            <label>Event Name</label>
+                            <input value={modifyName} onChange={e => setModifyName(e.target.value)} />
+                            <div className="cd-modify-dates">
+                                <div className="cd-modify-date-col">
+                                    <label>Actual Date</label>
+                                    <input type="text" value={events.find(e => e.id === modifyEventId)?.date || ''} disabled className="cd-date-disabled" />
+                                </div>
+                                <div className="cd-modify-date-col">
+                                    <label>Updated Date</label>
+                                    <input type="date" value={modifyDate} onChange={e => setModifyDate(e.target.value)} />
+                                </div>
+                            </div>
+                            <label>Venue</label>
+                            <select value={modifyVenue} onChange={e => setModifyVenue(e.target.value)} className="cd-modal-select">
+                                {VENUES.map(v => <option key={v} value={v}>{v}</option>)}
+                            </select>
+                            <label>Club</label>
+                            <input value={modifyClub} onChange={e => setModifyClub(e.target.value)} />
+                            <label>Coordinator</label>
+                            <input value={modifyCoordinator} onChange={e => setModifyCoordinator(e.target.value)} />
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Certificate Generation Modal */}
+            {showCertificateModal && selectedEvent && (
+                <div className="cd-modal-overlay" onClick={() => setShowCertificateModal(false)}>
+                    <div className="cd-modal" onClick={e => e.stopPropagation()}>
+                        <button className="cd-modal-close" onClick={() => setShowCertificateModal(false)}>×</button>
+                        <h3 className="cd-modal-title">Generate Certificates</h3>
+                        <div className="cd-modal-body" style={{ textAlign: 'center' }}>
+                            <div style={{ fontSize: '48px', marginBottom: '16px' }}>🎓</div>
+                            <p style={{ fontSize: '16px', color: '#1e3a5f', marginBottom: '8px' }}>
+                                Generating certificates for <strong>{selectedEvent.name}</strong>
+                            </p>
+                            <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', margin: '20px 0' }}>
+                                <div style={{ background: '#e8f5e9', padding: '15px 25px', borderRadius: '12px', border: '1px solid #c8e6c9' }}>
+                                    <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#2e7d32' }}>
+                                        {selectedEvent.students.filter(s => s.isWinner).length}
+                                    </div>
+                                    <div style={{ fontSize: '13px', color: '#388e3c' }}>Winners</div>
+                                </div>
+                                <div style={{ background: '#e3f2fd', padding: '15px 25px', borderRadius: '12px', border: '1px solid #bbdefb' }}>
+                                    <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#1565c0' }}>
+                                        {selectedEvent.students.filter(s => !s.isWinner).length}
+                                    </div>
+                                    <div style={{ fontSize: '13px', color: '#1976d2' }}>Participants</div>
+                                </div>
+                            </div>
+                            <p style={{ fontSize: '13px', color: '#64748b' }}>
+                                This will generate and download a ZIP file containing all certificates.
+                            </p>
+                        </div>
+                        <button
+                            className="cd-modal-full-btn"
+                            onClick={() => {
+                                // In a real app, this would trigger an API call to generate and download the PDFs
+                                setTimeout(() => setShowCertificateModal(false), 800);
+                            }}
+                        >
+                            Confirm & Generate
+                        </button>
+                    </div>
+                </div>
+            )}
+            {/* ══════════ REGISTRATION CRITERIA MODAL ══════════ */}
+            {showCriteriaModal && (
+                <div className="cd-modal-overlay" onClick={() => setShowCriteriaModal(false)}>
+                    <div className="cd-criteria-modal" onClick={e => e.stopPropagation()}>
+                        <button className="cd-modal-close" onClick={() => setShowCriteriaModal(false)}>×</button>
+                        <div className="cd-criteria-modal-header">
+                            <span className="cd-criteria-modal-icon">🛡️</span>
+                            <div>
+                                <h3 className="cd-criteria-modal-title">Set Registration Criteria</h3>
+                                <p className="cd-criteria-modal-sub">{events.find(e => e.id === criteriaEventId)?.name} — Define eligibility restrictions before opening registration</p>
+                            </div>
+                        </div>
+
+                        <div className="cd-criteria-grid">
+
+                            {/* ── GENDER ── */}
+                            <div className="cd-criteria-section">
+                                <p className="cd-criteria-section-label">👤 Gender Restriction</p>
+                                <div className="cd-criteria-gender-group">
+                                    {[{ v: 'all', label: '🌐 All', color: '#6366f1' }, { v: 'male', label: '♂ Boys Only', color: '#2196f3' }, { v: 'female', label: '♀ Girls Only', color: '#e91e63' }].map(o => (
+                                        <button
+                                            key={o.v}
+                                            className={`cd-criteria-gender-btn ${draftGender === o.v ? 'active' : ''}`}
+                                            style={draftGender === o.v ? { background: o.color, color: '#fff', borderColor: o.color } : {}}
+                                            onClick={() => setDraftGender(o.v)}
+                                        >{o.label}</button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* ── YEAR ── */}
+                            <div className="cd-criteria-section">
+                                <p className="cd-criteria-section-label">🎓 Year of Study <span className="cd-criteria-hint">(none = all years)</span></p>
+                                <div className="cd-criteria-checkbox-grid">
+                                    {YEARS.map(yr => (
+                                        <label key={yr} className={`cd-criteria-chip-check ${draftYears.includes(yr) ? 'active' : ''}`}>
+                                            <input type="checkbox" checked={draftYears.includes(yr)} onChange={() => toggleDraftYear(yr)} />
+                                            {yr} Year
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* ── BRANCH ── */}
+                            <div className="cd-criteria-section cd-criteria-section-wide">
+                                <p className="cd-criteria-section-label">🏷️ Branch / Department <span className="cd-criteria-hint">(none = all branches)</span></p>
+                                <div className="cd-criteria-checkbox-grid cd-criteria-branch-grid">
+                                    {BRANCHES.map(br => (
+                                        <label key={br} className={`cd-criteria-chip-check ${draftBranches.includes(br) ? 'active' : ''}`}>
+                                            <input type="checkbox" checked={draftBranches.includes(br)} onChange={() => toggleDraftBranch(br)} />
+                                            {br}
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* ── NATIONALITY ── */}
+                            <div className="cd-criteria-section">
+                                <p className="cd-criteria-section-label">🌍 Nationality <span className="cd-criteria-hint">(none = open to all)</span></p>
+                                <div className="cd-criteria-tag-row">
+                                    <input
+                                        className="cd-criteria-tag-input"
+                                        placeholder="e.g. Indian, Nepali…"
+                                        value={draftNatInput}
+                                        onChange={e => setDraftNatInput(e.target.value)}
+                                        onKeyDown={e => e.key === 'Enter' && addNatTag()}
+                                    />
+                                    <button className="cd-criteria-add-btn" onClick={addNatTag}>+</button>
+                                </div>
+                                <div className="cd-criteria-tags">
+                                    {draftNationalities.map(n => (
+                                        <span key={n} className="cd-criteria-tag cd-criteria-tag-nat">
+                                            {n}
+                                            <button onClick={() => setDraftNationalities(prev => prev.filter(x => x !== n))}>×</button>
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* ── REGION / STATE ── */}
+                            <div className="cd-criteria-section">
+                                <p className="cd-criteria-section-label">📍 Region / State <span className="cd-criteria-hint">(none = all regions)</span></p>
+                                <div className="cd-criteria-tag-row">
+                                    <input
+                                        className="cd-criteria-tag-input"
+                                        placeholder="e.g. Kerala, Andhra Pradesh…"
+                                        value={draftRegInput}
+                                        onChange={e => setDraftRegInput(e.target.value)}
+                                        onKeyDown={e => e.key === 'Enter' && addRegTag()}
+                                    />
+                                    <button className="cd-criteria-add-btn" onClick={addRegTag}>+</button>
+                                </div>
+                                <div className="cd-criteria-tags">
+                                    {draftRegions.map(r => (
+                                        <span key={r} className="cd-criteria-tag cd-criteria-tag-reg">
+                                            {r}
+                                            <button onClick={() => setDraftRegions(prev => prev.filter(x => x !== r))}>×</button>
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* ── PAID / FREE ── */}
+                            <div className="cd-criteria-section">
+                                <p className="cd-criteria-section-label">💳 Entry Type</p>
+                                <div className="cd-criteria-paid-row">
+                                    <button
+                                        className={`cd-criteria-paid-btn ${!draftIsPaid ? 'active free' : ''}`}
+                                        onClick={() => setDraftIsPaid(false)}
+                                    >🆓 Free</button>
+                                    <button
+                                        className={`cd-criteria-paid-btn ${draftIsPaid ? 'active paid' : ''}`}
+                                        onClick={() => setDraftIsPaid(true)}
+                                    >💰 Paid</button>
+                                </div>
+                                {draftIsPaid && (
+                                    <div className="cd-criteria-fee-row">
+                                        <span className="cd-criteria-fee-symbol">₹</span>
+                                        <input
+                                            type="number"
+                                            className="cd-criteria-fee-input"
+                                            placeholder="Enter fee amount"
+                                            value={draftFee}
+                                            min={0}
+                                            onChange={e => setDraftFee(e.target.value)}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+
+                        </div>{/* end grid */}
+
+                        {/* ── SUMMARY PREVIEW ── */}
+                        <div className="cd-criteria-summary">
+                            <span className="cd-criteria-summary-label">Preview:</span>
+                            {draftGender !== 'all' && <span className="cd-cbadge cd-cbadge-gender">{draftGender === 'male' ? '♂ Boys Only' : '♀ Girls Only'}</span>}
+                            {draftYears.length > 0 && <span className="cd-cbadge cd-cbadge-year">🎓 {draftYears.join(', ')}</span>}
+                            {draftBranches.length > 0 && <span className="cd-cbadge cd-cbadge-branch">🏷️ {draftBranches.join(', ')}</span>}
+                            {draftNationalities.length > 0 && <span className="cd-cbadge cd-cbadge-nat">🌍 {draftNationalities.join(', ')}</span>}
+                            {draftRegions.length > 0 && <span className="cd-cbadge cd-cbadge-reg">📍 {draftRegions.join(', ')}</span>}
+                            {draftIsPaid && <span className="cd-cbadge cd-cbadge-paid">💰 ₹{draftFee}</span>}
+                            {draftGender === 'all' && draftYears.length === 0 && draftBranches.length === 0 && draftNationalities.length === 0 && draftRegions.length === 0 && !draftIsPaid && (
+                                <span className="cd-cbadge cd-cbadge-open">🌐 Open to All</span>
+                            )}
+                        </div>
+
+                        <button className="cd-criteria-save-btn" onClick={handleSaveCriteria}>
+                            ✅ Save & Open Registration
+                        </button>
+                    </div>
+                </div>
+            )}
         </>
     );
 
     const mainJSX = (
         <main className="cd-main" style={embedded ? { marginLeft: 0 } : undefined}>
-            {/* top row: profile + members */}
-            <div className="cd-top-row">
-                {/* profile card */}
-                <div className="cd-profile-card">
-                    <span className="cd-profile-card-header">Coordinator Profile</span>
-                    <button className="cd-profile-settings" title="Settings">⚙️</button>
-                    <img src={logoEmblem} alt="Avatar" className="cd-profile-avatar" />
-                    <div className="cd-profile-details">
-                        <p className="name">{profile.name}</p>
-                        <p className="info">📞 {profile.phone}</p>
-                        <p className="info">✉️ {profile.email}</p>
-                        <button className="cd-profile-update-btn">Update Profile</button>
-                    </div>
-                </div>
 
-                {/* members card */}
-                <div className="cd-members-card">
-                    <p className="cd-members-card-header">Student Body Members</p>
-
-                    <label className="cd-upload-excel-btn" style={{ cursor: 'pointer' }}>
-                        📄 Upload Members (Excel)
-                        <input type="file" accept=".csv,.xlsx,.xls" style={{ display: 'none' }} onChange={handleUploadMembers} />
-                    </label>
-
-                    <select className="cd-members-select">
-                        <option>View Current Members ({members.length})</option>
-                        {members.map(m => (
-                            <option key={m.id}>{m.name} - {m.year} - {m.dept}</option>
-                        ))}
-                    </select>
-
-                    <div className="cd-add-member-row">
-                        <input
-                            placeholder="Add New Member (Name - Year - Dept)"
-                            value={newMemberText}
-                            onChange={e => setNewMemberText(e.target.value)}
-                            onKeyDown={e => e.key === 'Enter' && handleAddMember()}
-                        />
-                        <button className="cd-add-member-btn" onClick={handleAddMember}>+</button>
-                    </div>
-
-                    {members.length > 0 && (
-                        <button className="cd-delete-member-btn" onClick={() => { const last = members[members.length - 1]; if (last) handleDeleteMember(last.id); }}>
-                            🗑️ Delete Selected Member
-                        </button>
-                    )}
-                </div>
-            </div>
-
-            {/* ── STATS ROW ── */}
-            <div className="cd-stats-row">
-                <div className="cd-stat-card">
-                    <span className="cd-stat-icon">📅</span>
-                    <div>
-                        <p className="cd-stat-value">{events.length}</p>
-                        <p className="cd-stat-label">Total Events</p>
-                    </div>
-                </div>
-                <div className="cd-stat-card">
-                    <span className="cd-stat-icon">🟢</span>
-                    <div>
-                        <p className="cd-stat-value">{events.filter(e => e.registrationOpen).length}</p>
-                        <p className="cd-stat-label">Open Registrations</p>
-                    </div>
-                </div>
-                <div className="cd-stat-card">
-                    <span className="cd-stat-icon">👥</span>
-                    <div>
-                        <p className="cd-stat-value">{events.reduce((s, e) => s + e.students.length, 0)}</p>
-                        <p className="cd-stat-label">Total Registrations</p>
-                    </div>
-                </div>
-                <div className="cd-stat-card">
-                    <span className="cd-stat-icon">🔴</span>
-                    <div>
-                        <p className="cd-stat-value">{events.filter(e => !e.registrationOpen).length}</p>
-                        <p className="cd-stat-label">Closed Events</p>
-                    </div>
-                </div>
-            </div>
-
-            {/* ── DATA TABLE ── */}
-            <div className="cd-table-section">
-                {/* header bar */}
-                <div className="cd-table-header">
-                    <div className="cd-table-title-area">
-                        <h2 className="cd-table-title">
-                            {selectedEvent ? selectedEvent.name : 'Registered Students'}
-                        </h2>
-                        <p className="cd-table-subtitle">
-                            {selectedEvent
-                                ? `${processedData.length} registered student${processedData.length !== 1 ? 's' : ''} • ${selectedEvent.nature} • ${selectedEvent.date}`
-                                : 'Select an event from the sidebar to view registered students'
-                            }
-                        </p>
-                    </div>
-
-                    {selectedEvent && (
-                        <div className={`cd-reg-toggle ${selectedEvent.registrationOpen ? 'open' : 'closed'}`}>
-                            <span>{selectedEvent.registrationOpen ? '🟢 Registration Open' : '🔴 Registration Closed'}</span>
-                            <label className="cd-reg-switch">
-                                <input type="checkbox" checked={selectedEvent.registrationOpen} onChange={toggleRegistration} />
-                                <span className="cd-reg-slider" />
-                            </label>
+            {/* ── UPCOMING EVENTS VIEW ── */}
+            {activeSection === 'upcoming' && (
+                <div className="cd-upcoming-section">
+                    <h2 className="cd-section-title">🔔 Upcoming Events</h2>
+                    <p className="cd-section-subtitle">Events color-coded by urgency: <span className="cd-legend-dot critical" /> ≤10 days &nbsp; <span className="cd-legend-dot warning" /> ≤15 days &nbsp; <span className="cd-legend-dot approaching" /> ≤30 days &nbsp; <span className="cd-legend-dot scheduled" /> &gt;30 days</p>
+                    {upcomingEvents.length === 0 ? (
+                        <div className="cd-table-empty"><div className="cd-table-empty-icon">📋</div><p>No upcoming events.</p></div>
+                    ) : (
+                        <div className="cd-upcoming-grid">
+                            {upcomingEvents.map(ev => (
+                                <div key={ev.id} className={`cd-upcoming-card ${ev.urgency}`}>
+                                    <div className="cd-upcoming-card-header">
+                                        <span className={`cd-upcoming-badge ${ev.urgency}`}>{ev.daysUntil === 0 ? 'Today' : `${ev.daysUntil} day${ev.daysUntil !== 1 ? 's' : ''}`}</span>
+                                        <span className={`cd-upcoming-status ${ev.registrationOpen ? 'open' : 'closed'}`}>{ev.registrationOpen ? '🟢 Open' : '🔴 Closed'}</span>
+                                    </div>
+                                    <h3 className="cd-upcoming-name">{ev.name}</h3>
+                                    <div className="cd-upcoming-meta">
+                                        <span>📅 {ev.date}</span>
+                                        <span>📍 {ev.venue || 'TBD'}</span>
+                                        <span>🏷️ {ev.nature}</span>
+                                    </div>
+                                    <div className="cd-upcoming-meta">
+                                        <span>👤 {ev.coordinator || ev.facultyName}</span>
+                                        <span>👥 {ev.students.length} registered</span>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     )}
                 </div>
+            )}
 
-                {/* toolbar */}
-                {selectedEvent && (
-                    <div className="cd-toolbar">
-                        <span className="cd-toolbar-label">Sort:</span>
-                        {['branch', 'year', 'section', 'registeredDate'].map(k => (
-                            <button
-                                key={k}
-                                className={`cd-sort-chip ${sortStack.some(s => s.key === k) ? 'active' : ''}`}
-                                onClick={() => handleQuickSort(k)}
-                            >
-                                <span className="chip-icon">{k === 'branch' ? '🏷️' : k === 'year' ? '🎓' : k === 'section' ? '📋' : '📅'}</span>
-                                {k === 'registeredDate' ? 'Date' : k.charAt(0).toUpperCase() + k.slice(1)}
-                                {sortStack.some(s => s.key === k) && (
-                                    <span className="chip-dir">{sortStack.find(s => s.key === k)?.dir === 'asc' ? '↑' : '↓'}</span>
-                                )}
+            {/* ── CALENDAR VIEW ── */}
+            {activeSection === 'calendar' && (
+                <div className="cd-cal-page">
+                    {/* Left: Event Filter */}
+                    <div className="cd-cal-filter-panel">
+                        <h3 className="cd-cal-filter-title">Event Filter</h3>
+                        {[
+                            { key: 'all', label: 'All Events', icon: '📋', count: events.length },
+                            { key: 'upcoming', label: 'Upcoming', icon: '📅', count: events.filter(e => new Date(e.date) >= new Date()).length },
+                            { key: 'modified', label: 'Modified', icon: '✏️', count: events.filter(e => e.modified).length },
+                            { key: 'completed', label: 'Completed', icon: '🏆', count: events.filter(e => new Date(e.date) < new Date()).length },
+                        ].map(f => (
+                            <button key={f.key} className={`cd-cal-filter-item ${calFilter === f.key ? 'active' : ''}`} onClick={() => setCalFilter(f.key)}>
+                                <span className="cd-cal-filter-icon">{f.icon}</span>
+                                <span>{f.label}</span>
+                                <span className={`cd-cal-filter-badge ${f.key}`}>{f.count}</span>
                             </button>
                         ))}
-                        <button
-                            className={`cd-sort-chip ${sortStack.length > 0 && !['branch', 'year', 'section', 'registeredDate'].some(k => sortStack.length === 1 && sortStack[0].key === k) ? 'active' : ''}`}
-                            onClick={() => setSortStack([])}
-                        >
-                            <span className="chip-icon">⚙️</span>
-                            Custom
-                        </button>
-
-                        <div className="cd-toolbar-divider" />
-
-                        <button className={`cd-filter-btn ${showFilters ? 'active' : ''}`} onClick={() => setShowFilters(v => !v)}>
-                            🔽 Filter
-                        </button>
-
-                        <button className={`cd-columns-btn ${showColumns ? 'active' : ''}`} onClick={() => setShowColumns(v => !v)}>
-                            📊 Columns
-                        </button>
-
-                        <button className="cd-export-btn" onClick={exportCSV}>
-                            📥 Export CSV
-                        </button>
+                        <div className="cd-cal-legend">
+                            <span><span className="cd-legend-dot" style={{ background: '#4caf50' }} /> Events scheduled for future.</span>
+                            <span><span className="cd-legend-dot" style={{ background: '#2196f3' }} /> Dates or venues have changed.</span>
+                            <span><span className="cd-legend-dot" style={{ background: '#ff9800' }} /> Past events.</span>
+                        </div>
+                        <div className="cd-cal-admin-actions">
+                            <h4>ADMIN ACTIONS</h4>
+                            <button className="cd-cal-upload-btn" onClick={() => setShowUploadModal(true)}>☁️ Upload</button>
+                            <button className="cd-cal-modify-btn" onClick={openModifyModal}>✏️ Modify Event</button>
+                        </div>
                     </div>
-                )}
-
-                {/* active sort stack indicator */}
-                {selectedEvent && sortStack.length > 0 && (
-                    <div className="cd-sort-stack-bar">
-                        <span className="cd-sort-stack-label">Active Sort:</span>
-                        {sortStack.map((s, i) => (
-                            <span key={s.key} className="cd-sort-stack-item">
-                                <span className="cd-sort-priority">{i + 1}</span>
-                                {s.key === 'registeredDate' ? 'Date' : s.key.charAt(0).toUpperCase() + s.key.slice(1)}
-                                <span className="cd-sort-dir">{s.dir === 'asc' ? '↑' : '↓'}</span>
-                                <button className="cd-sort-remove" onClick={() => setSortStack(prev => prev.filter((_, j) => j !== i))}>×</button>
-                            </span>
-                        ))}
-                        <button className="cd-sort-clear" onClick={() => setSortStack([])}>Clear All</button>
+                    {/* Right: Calendar Grid */}
+                    <div className="cd-cal-grid-container">
+                        <div className="cd-cal-nav">
+                            <button className="cd-cal-nav-btn" onClick={prevMonth}>❮</button>
+                            <h2 className="cd-cal-month-title">{MONTHS[calMonth]} {calYear}</h2>
+                            <button className="cd-cal-nav-btn" onClick={nextMonth}>❯</button>
+                        </div>
+                        <div className="cd-cal-grid">
+                            {['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map((d, i) => (
+                                <div key={d} className={`cd-cal-day-header ${i === 5 ? 'fri' : ''}`}>{d}</div>
+                            ))}
+                            {calendarData.map((cell, i) => (
+                                <div key={i} className={`cd-cal-cell ${cell ? '' : 'empty'}`}>
+                                    {cell && (
+                                        <>
+                                            <span className="cd-cal-day-num">{cell.day}</span>
+                                            {cell.events.map(ev => (
+                                                <div key={ev.id} className="cd-cal-event-dot" title={ev.name} onClick={() => { setSelectedEventId(ev.id); setActiveSection('dashboard'); }}>
+                                                    {ev.name.length > 12 ? ev.name.slice(0, 12) + '…' : ev.name}
+                                                </div>
+                                            ))}
+                                        </>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
                     </div>
-                )}
+                </div>
+            )}
 
-                {/* filter panel */}
-                {showFilters && selectedEvent && (
-                    <div className="cd-filter-panel">
-                        <div className="cd-filter-group">
-                            <label>Name</label>
-                            <input placeholder="Filter..." value={filters.name || ''} onChange={e => handleFilterChange('name', e.target.value)} />
+            {/* ── EVENTS DASHBOARD VIEW (existing) ── */}
+            {activeSection === 'dashboard' && (<>
+                {/* top row: profile + members */}
+                <div className="cd-top-row">
+                    {/* profile card */}
+                    <div className="cd-profile-card">
+                        <span className="cd-profile-card-header">Coordinator Profile</span>
+                        <button className="cd-profile-settings" title="Settings">⚙️</button>
+                        <img src={logoEmblem} alt="Avatar" className="cd-profile-avatar" />
+                        <div className="cd-profile-details">
+                            <p className="name">{profile.name}</p>
+                            <p className="info">📞 {profile.phone}</p>
+                            <p className="info">✉️ {profile.email}</p>
+                            <button className="cd-profile-update-btn">Update Profile</button>
                         </div>
-                        <div className="cd-filter-group">
-                            <label>Roll No</label>
-                            <input placeholder="Filter..." value={filters.rollNo || ''} onChange={e => handleFilterChange('rollNo', e.target.value)} />
-                        </div>
-                        <div className="cd-filter-group">
-                            <label>Branch</label>
-                            <select value={filters.branch || ''} onChange={e => handleFilterChange('branch', e.target.value)}>
-                                <option value="">All</option>
-                                {BRANCHES.map(b => <option key={b} value={b}>{b}</option>)}
-                            </select>
-                        </div>
-                        <div className="cd-filter-group">
-                            <label>Year</label>
-                            <select value={filters.year || ''} onChange={e => handleFilterChange('year', e.target.value)}>
-                                <option value="">All</option>
-                                {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
-                            </select>
-                        </div>
-                        <div className="cd-filter-group">
-                            <label>Section</label>
-                            <select value={filters.section || ''} onChange={e => handleFilterChange('section', e.target.value)}>
-                                <option value="">All</option>
-                                {SECTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-                            </select>
-                        </div>
-                        <div className="cd-filter-group">
-                            <label>Email</label>
-                            <input placeholder="Filter..." value={filters.email || ''} onChange={e => handleFilterChange('email', e.target.value)} />
-                        </div>
-                        <button className="cd-clear-filters-btn" onClick={clearFilters}>✕ Clear All</button>
                     </div>
-                )}
 
-                {/* columns panel */}
-                {showColumns && selectedEvent && (
-                    <div className="cd-columns-panel">
-                        {ALL_COLUMNS.map(col => (
-                            <label key={col.key} className="cd-col-check">
-                                <input
-                                    type="checkbox"
-                                    checked={visibleCols.includes(col.key)}
-                                    onChange={() => toggleColumn(col.key)}
-                                />
-                                {col.label}
-                            </label>
-                        ))}
+                    {/* members card */}
+                    <div className="cd-members-card">
+                        <p className="cd-members-card-header">Student Body Members</p>
+
+                        <label className="cd-upload-excel-btn" style={{ cursor: 'pointer' }}>
+                            📄 Upload Members (Excel)
+                            <input type="file" accept=".csv,.xlsx,.xls" style={{ display: 'none' }} onChange={handleUploadMembers} />
+                        </label>
+
+                        <select className="cd-members-select">
+                            <option>View Current Members ({members.length})</option>
+                            {members.map(m => (
+                                <option key={m.id}>{m.name} - {m.year} - {m.dept}</option>
+                            ))}
+                        </select>
+
+                        <div className="cd-add-member-row">
+                            <input
+                                placeholder="Add New Member (Name - Year - Dept)"
+                                value={newMemberText}
+                                onChange={e => setNewMemberText(e.target.value)}
+                                onKeyDown={e => e.key === 'Enter' && handleAddMember()}
+                            />
+                            <button className="cd-add-member-btn" onClick={handleAddMember}>+</button>
+                        </div>
+
+                        {members.length > 0 && (
+                            <button className="cd-delete-member-btn" onClick={() => { const last = members[members.length - 1]; if (last) handleDeleteMember(last.id); }}>
+                                🗑️ Delete Selected Member
+                            </button>
+                        )}
                     </div>
-                )}
+                </div>
 
-                {/* table */}
-                <div className="cd-table-wrap">
-                    {selectedEvent ? (
-                        <table className="cd-table">
-                            <thead>
-                                <tr>
-                                    {ALL_COLUMNS.filter(c => visibleCols.includes(c.key)).map(col => (
-                                        <th
-                                            key={col.key}
-                                            onClick={() => col.sortable && handleSort(col.key)}
-                                            style={{ cursor: col.sortable ? 'pointer' : 'default' }}
-                                            className={sortStack.some(s => s.key === col.key) ? 'sorted' : ''}
-                                        >
-                                            {col.label}
-                                            {col.sortable && (() => {
-                                                const idx = sortStack.findIndex(s => s.key === col.key);
-                                                if (idx === -1) return <span className="sort-indicator"> ↕</span>;
-                                                const dir = sortStack[idx].dir;
-                                                return (
-                                                    <>
-                                                        <span className="sort-indicator active">
-                                                            {dir === 'asc' ? ' ↑' : ' ↓'}
-                                                        </span>
-                                                        {sortStack.length > 1 && <span className="sort-priority">{idx + 1}</span>}
-                                                    </>
-                                                );
-                                            })()}
-                                        </th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {pageData.length > 0 ? pageData.map((row, i) => (
-                                    <tr key={row.id}>
+                {/* ── STATS ROW ── */}
+                <div className="cd-stats-row">
+                    <div className="cd-stat-card">
+                        <span className="cd-stat-icon">📅</span>
+                        <div>
+                            <p className="cd-stat-value">{events.length}</p>
+                            <p className="cd-stat-label">Total Events</p>
+                        </div>
+                    </div>
+                    <div className="cd-stat-card">
+                        <span className="cd-stat-icon">🟢</span>
+                        <div>
+                            <p className="cd-stat-value">{events.filter(e => e.registrationOpen).length}</p>
+                            <p className="cd-stat-label">Open Registrations</p>
+                        </div>
+                    </div>
+                    <div className="cd-stat-card">
+                        <span className="cd-stat-icon">👥</span>
+                        <div>
+                            <p className="cd-stat-value">{events.reduce((s, e) => s + e.students.length, 0)}</p>
+                            <p className="cd-stat-label">Total Registrations</p>
+                        </div>
+                    </div>
+                    <div className="cd-stat-card">
+                        <span className="cd-stat-icon">🔴</span>
+                        <div>
+                            <p className="cd-stat-value">{events.filter(e => !e.registrationOpen).length}</p>
+                            <p className="cd-stat-label">Closed Events</p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* ── DATA TABLE ── */}
+                <div className="cd-table-section">
+                    {/* header bar */}
+                    <div className="cd-table-header">
+                        <div className="cd-table-title-area">
+                            <h2 className="cd-table-title">
+                                {selectedEvent ? selectedEvent.name : 'Registered Students'}
+                            </h2>
+                            <p className="cd-table-subtitle">
+                                {selectedEvent
+                                    ? `${processedData.length} registered student${processedData.length !== 1 ? 's' : ''} • ${selectedEvent.nature} • ${selectedEvent.date}`
+                                    : 'Select an event from the sidebar to view registered students'
+                                }
+                            </p>
+                        </div>
+
+                        {selectedEvent && (
+                            <div className={`cd-reg-toggle ${selectedEvent.registrationOpen ? 'open' : 'closed'}`}>
+                                <span>{selectedEvent.registrationOpen ? '🟢 Registration Open' : '🔴 Registration Closed'}</span>
+                                <label className="cd-reg-switch">
+                                    <input type="checkbox" checked={selectedEvent.registrationOpen} onChange={toggleRegistration} />
+                                    <span className="cd-reg-slider" />
+                                </label>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* ── CRITERIA BADGES ── */}
+                    {selectedEvent && selectedEvent.criteria && (() => {
+                        const c = selectedEvent.criteria;
+                        const hasCriteria =
+                            c.gender !== 'all' ||
+                            c.years?.length > 0 ||
+                            c.branches?.length > 0 ||
+                            c.nationalities?.length > 0 ||
+                            c.regions?.length > 0 ||
+                            c.isPaid;
+                        return hasCriteria ? (
+                            <div className="cd-criteria-badges-row">
+                                <span className="cd-criteria-badges-label">🛡️ Criteria:</span>
+                                {c.gender !== 'all' && <span className="cd-cbadge cd-cbadge-gender">{c.gender === 'male' ? '♂ Boys Only' : '♀ Girls Only'}</span>}
+                                {c.years?.length > 0 && <span className="cd-cbadge cd-cbadge-year">🎓 {c.years.join(', ')} Year</span>}
+                                {c.branches?.length > 0 && <span className="cd-cbadge cd-cbadge-branch">🏷️ {c.branches.join(', ')}</span>}
+                                {c.nationalities?.length > 0 && <span className="cd-cbadge cd-cbadge-nat">🌍 {c.nationalities.join(', ')}</span>}
+                                {c.regions?.length > 0 && <span className="cd-cbadge cd-cbadge-reg">📍 {c.regions.join(', ')}</span>}
+                                {c.isPaid && <span className="cd-cbadge cd-cbadge-paid">💰 ₹{c.fee} Entry Fee</span>}
+                                <button
+                                    className="cd-criteria-edit-link"
+                                    onClick={toggleRegistration}
+                                    title="Edit criteria (will close and re-open registration)"
+                                >✏️ Edit Criteria</button>
+                            </div>
+                        ) : null;
+                    })()}
+
+                    {selectedEvent && (
+                        <div className="cd-toolbar">
+                            <span className="cd-toolbar-label">Sort:</span>
+                            {['branch', 'year', 'section', 'registeredDate'].map(k => (
+                                <button
+                                    key={k}
+                                    className={`cd-sort-chip ${sortStack.some(s => s.key === k) ? 'active' : ''}`}
+                                    onClick={() => handleQuickSort(k)}
+                                >
+                                    <span className="chip-icon">{k === 'branch' ? '🏷️' : k === 'year' ? '🎓' : k === 'section' ? '📋' : '📅'}</span>
+                                    {k === 'registeredDate' ? 'Date' : k.charAt(0).toUpperCase() + k.slice(1)}
+                                    {sortStack.some(s => s.key === k) && (
+                                        <span className="chip-dir">{sortStack.find(s => s.key === k)?.dir === 'asc' ? '↑' : '↓'}</span>
+                                    )}
+                                </button>
+                            ))}
+                            <button
+                                className={`cd-sort-chip ${sortStack.length > 0 && !['branch', 'year', 'section', 'registeredDate'].some(k => sortStack.length === 1 && sortStack[0].key === k) ? 'active' : ''}`}
+                                onClick={() => setSortStack([])}
+                            >
+                                <span className="chip-icon">⚙️</span>
+                                Custom
+                            </button>
+
+                            <div className="cd-toolbar-divider" />
+
+                            <button className={`cd-filter-btn ${showFilters ? 'active' : ''}`} onClick={() => setShowFilters(v => !v)}>
+                                🔽 Filter
+                            </button>
+
+                            <button className={`cd-columns-btn ${showColumns ? 'active' : ''}`} onClick={() => setShowColumns(v => !v)}>
+                                📊 Columns
+                            </button>
+
+                            <button className="cd-export-btn" onClick={handleGenerateCertificates}>
+                                🎓 Generate Certificates
+                            </button>
+
+                            <button className="cd-export-btn" onClick={exportCSV}>
+                                📥 Export CSV
+                            </button>
+                        </div>
+                    )}
+
+                    {/* active sort stack indicator */}
+                    {selectedEvent && sortStack.length > 0 && (
+                        <div className="cd-sort-stack-bar">
+                            <span className="cd-sort-stack-label">Active Sort:</span>
+                            {sortStack.map((s, i) => (
+                                <span key={s.key} className="cd-sort-stack-item">
+                                    <span className="cd-sort-priority">{i + 1}</span>
+                                    {s.key === 'registeredDate' ? 'Date' : s.key.charAt(0).toUpperCase() + s.key.slice(1)}
+                                    <span className="cd-sort-dir">{s.dir === 'asc' ? '↑' : '↓'}</span>
+                                    <button className="cd-sort-remove" onClick={() => setSortStack(prev => prev.filter((_, j) => j !== i))}>×</button>
+                                </span>
+                            ))}
+                            <button className="cd-sort-clear" onClick={() => setSortStack([])}>Clear All</button>
+                        </div>
+                    )}
+
+                    {/* filter panel */}
+                    {showFilters && selectedEvent && (
+                        <div className="cd-filter-panel">
+                            <div className="cd-filter-group">
+                                <label>Name</label>
+                                <input placeholder="Filter..." value={filters.name || ''} onChange={e => handleFilterChange('name', e.target.value)} />
+                            </div>
+                            <div className="cd-filter-group">
+                                <label>Roll No</label>
+                                <input placeholder="Filter..." value={filters.rollNo || ''} onChange={e => handleFilterChange('rollNo', e.target.value)} />
+                            </div>
+                            <div className="cd-filter-group">
+                                <label>Branch</label>
+                                <select value={filters.branch || ''} onChange={e => handleFilterChange('branch', e.target.value)}>
+                                    <option value="">All</option>
+                                    {BRANCHES.map(b => <option key={b} value={b}>{b}</option>)}
+                                </select>
+                            </div>
+                            <div className="cd-filter-group">
+                                <label>Year</label>
+                                <select value={filters.year || ''} onChange={e => handleFilterChange('year', e.target.value)}>
+                                    <option value="">All</option>
+                                    {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+                                </select>
+                            </div>
+                            <div className="cd-filter-group">
+                                <label>Section</label>
+                                <select value={filters.section || ''} onChange={e => handleFilterChange('section', e.target.value)}>
+                                    <option value="">All</option>
+                                    {SECTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                                </select>
+                            </div>
+                            <div className="cd-filter-group">
+                                <label>Email</label>
+                                <input placeholder="Filter..." value={filters.email || ''} onChange={e => handleFilterChange('email', e.target.value)} />
+                            </div>
+                            <button className="cd-clear-filters-btn" onClick={clearFilters}>✕ Clear All</button>
+                        </div>
+                    )}
+
+                    {/* columns panel */}
+                    {showColumns && selectedEvent && (
+                        <div className="cd-columns-panel">
+                            {ALL_COLUMNS.map(col => (
+                                <label key={col.key} className="cd-col-check">
+                                    <input
+                                        type="checkbox"
+                                        checked={visibleCols.includes(col.key)}
+                                        onChange={() => toggleColumn(col.key)}
+                                    />
+                                    {col.label}
+                                </label>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* table */}
+                    <div className="cd-table-wrap">
+                        {selectedEvent ? (
+                            <table className="cd-table">
+                                <thead>
+                                    <tr>
                                         {ALL_COLUMNS.filter(c => visibleCols.includes(c.key)).map(col => (
-                                            <td key={col.key}>
-                                                {col.key === 'sno' ? (currentPage - 1) * ROWS_PER_PAGE + i + 1 : row[col.key]}
-                                            </td>
+                                            <th
+                                                key={col.key}
+                                                onClick={() => col.sortable && handleSort(col.key)}
+                                                style={{ cursor: col.sortable ? 'pointer' : 'default' }}
+                                                className={sortStack.some(s => s.key === col.key) ? 'sorted' : ''}
+                                            >
+                                                {col.label}
+                                                {col.sortable && (() => {
+                                                    const idx = sortStack.findIndex(s => s.key === col.key);
+                                                    if (idx === -1) return <span className="sort-indicator"> ↕</span>;
+                                                    const dir = sortStack[idx].dir;
+                                                    return (
+                                                        <>
+                                                            <span className="sort-indicator active">
+                                                                {dir === 'asc' ? ' ↑' : ' ↓'}
+                                                            </span>
+                                                            {sortStack.length > 1 && <span className="sort-priority">{idx + 1}</span>}
+                                                        </>
+                                                    );
+                                                })()}
+                                            </th>
                                         ))}
                                     </tr>
-                                )) : (
-                                    <tr>
-                                        <td colSpan={visibleCols.length} style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
-                                            No students match the current filters.
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    ) : (
-                        <div className="cd-table-empty">
-                            <div className="cd-table-empty-icon">📋</div>
-                            <p>Select an event from the sidebar to view registered students.</p>
+                                </thead>
+                                <tbody>
+                                    {pageData.length > 0 ? pageData.map((row, i) => (
+                                        <tr key={row.id} style={row.isLive ? { background: 'rgba(34,197,94,0.06)', borderLeft: '3px solid #22c55e' } : {}}>
+                                            {ALL_COLUMNS.filter(c => visibleCols.includes(c.key)).map(col => (
+                                                <td key={col.key}>
+                                                    {col.key === 'sno' ? (currentPage - 1) * ROWS_PER_PAGE + i + 1 :
+                                                        col.key === 'isWinner' ? (
+                                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                                <input
+                                                                    type="checkbox"
+                                                                    className="cd-winner-checkbox"
+                                                                    checked={!!row.isWinner}
+                                                                    onChange={() => toggleWinner(row.id)}
+                                                                    style={{ transform: 'scale(1.4)', margin: '0 5px' }}
+                                                                />
+                                                                <span style={{ fontSize: '11px', color: row.isWinner ? '#2e7d32' : 'transparent', fontWeight: 'bold' }}>WINNER</span>
+                                                            </div>
+                                                        ) : col.key === 'name' ? (
+                                                            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                                {row[col.key]}
+                                                                {row.isLive && <span style={{ fontSize: '9px', background: 'rgba(34,197,94,0.15)', color: '#22c55e', padding: '1px 6px', borderRadius: 99, fontWeight: 700, whiteSpace: 'nowrap' }}>🟢 Live</span>}
+                                                            </span>
+                                                        ) : row[col.key]}
+                                                </td>
+                                            ))}
+                                        </tr>
+                                    )) : (
+                                        <tr>
+                                            <td colSpan={visibleCols.length} style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
+                                                No students match the current filters.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        ) : (
+                            <div className="cd-table-empty">
+                                <div className="cd-table-empty-icon">📋</div>
+                                <p>Select an event from the sidebar to view registered students.</p>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* pagination */}
+                    {selectedEvent && processedData.length > ROWS_PER_PAGE && (
+                        <div className="cd-pagination">
+                            <span className="cd-pagination-info">
+                                Showing {(currentPage - 1) * ROWS_PER_PAGE + 1}–{Math.min(currentPage * ROWS_PER_PAGE, processedData.length)} of {processedData.length}
+                            </span>
+                            <div className="cd-pagination-controls">
+                                <button disabled={currentPage === 1} onClick={() => setCurrentPage(1)}>«</button>
+                                <button disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>‹</button>
+                                {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                                    let page;
+                                    if (totalPages <= 5) page = i + 1;
+                                    else if (currentPage <= 3) page = i + 1;
+                                    else if (currentPage >= totalPages - 2) page = totalPages - 4 + i;
+                                    else page = currentPage - 2 + i;
+                                    return (
+                                        <button
+                                            key={page}
+                                            className={currentPage === page ? 'active' : ''}
+                                            onClick={() => setCurrentPage(page)}
+                                        >
+                                            {page}
+                                        </button>
+                                    );
+                                })}
+                                <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)}>›</button>
+                                <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(totalPages)}>»</button>
+                            </div>
                         </div>
                     )}
                 </div>
-
-                {/* pagination */}
-                {selectedEvent && processedData.length > ROWS_PER_PAGE && (
-                    <div className="cd-pagination">
-                        <span className="cd-pagination-info">
-                            Showing {(currentPage - 1) * ROWS_PER_PAGE + 1}–{Math.min(currentPage * ROWS_PER_PAGE, processedData.length)} of {processedData.length}
-                        </span>
-                        <div className="cd-pagination-controls">
-                            <button disabled={currentPage === 1} onClick={() => setCurrentPage(1)}>«</button>
-                            <button disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>‹</button>
-                            {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                                let page;
-                                if (totalPages <= 5) page = i + 1;
-                                else if (currentPage <= 3) page = i + 1;
-                                else if (currentPage >= totalPages - 2) page = totalPages - 4 + i;
-                                else page = currentPage - 2 + i;
-                                return (
-                                    <button
-                                        key={page}
-                                        className={currentPage === page ? 'active' : ''}
-                                        onClick={() => setCurrentPage(page)}
-                                    >
-                                        {page}
-                                    </button>
-                                );
-                            })}
-                            <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)}>›</button>
-                            <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(totalPages)}>»</button>
-                        </div>
-                    </div>
-                )}
-            </div>
+            </>)}
         </main>
     );
 
