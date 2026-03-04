@@ -9,6 +9,7 @@ import CoordinatorDashboard from './CoordinatorDashboard';
 import HODDashboard from './HODDashboard';
 import DeanDashboard from './DeanDashboard';
 import SuperAdminDashboard from './SuperAdminDashboard';
+import StudentDashboard from './StudentDashboard';
 
 /* ── Protected route: redirects to login if not authenticated ── */
 function ProtectedRoute({ children, allowedRoles }) {
@@ -37,6 +38,11 @@ function AppRoutes() {
       } />
       <Route path="/expertise-dashboard" element={
         <ProtectedRoute><ExpertiseDashboard /></ProtectedRoute>
+      } />
+
+      {/* Student route */}
+      <Route path="/student-dashboard" element={
+        <ProtectedRoute><StudentDashboard /></ProtectedRoute>
       } />
 
       {/* Admin role routes */}
