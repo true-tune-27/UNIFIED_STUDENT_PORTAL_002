@@ -152,7 +152,18 @@ export default function LoginPage() {
         );
       }
     } else {
-      alert('Student dashboard coming soon!');
+      // Student login
+      const user = getUserByCredentials(userId, password);
+      if (user && user.role === 'Student') {
+        login(user);
+        navigate('/student-dashboard');
+      } else {
+        alert(
+          'Invalid student credentials!\n\n' +
+          'Demo student credentials:\n' +
+          '• student@aditya.edu / student123'
+        );
+      }
     }
   };
 

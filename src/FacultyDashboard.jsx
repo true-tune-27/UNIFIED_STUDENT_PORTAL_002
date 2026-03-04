@@ -14,9 +14,16 @@ const baseNavItems = [
     { id: 'interpersonal', label: 'Interpersonal', icon: '👥' },
 ];
 
-/* ── Role nav item appended based on adminRole ── */
 const roleNavMap = {
-    Coordinator: { id: 'coordinator', label: 'Coordinator Panel', icon: '🎯', chip: 'COORD', chipColor: '#0f766e' },
+    Coordinator: {
+        id: 'coordinator', label: 'Coordinator Panel', icon: '🎯', chip: 'COORD', chipColor: '#0f766e',
+        expandable: true,
+        subItems: [
+            { id: 'coord-upcoming', label: 'Upcoming Events', icon: '🔔', path: 'upcoming' },
+            { id: 'coord-calendar', label: 'Event Calendar', icon: '📅', path: 'calendar' },
+            { id: 'coord-dashboard', label: 'Events Dashboard', icon: '📊', path: 'dashboard' }
+        ]
+    },
     HOD: { id: 'hod', label: 'HOD Panel', icon: '🏛️', chip: 'HOD', chipColor: '#0f172a' },
     Dean: { id: 'dean', label: 'Dean Panel', icon: '👑', chip: 'DEAN', chipColor: '#d97706' },
 };
@@ -32,6 +39,7 @@ const categories = [
 
 export default function FacultyDashboard() {
     const [activeNav, setActiveNav] = useState('dashboard');
+    const [openDropdowns, setOpenDropdowns] = useState({});
     const navigate = useNavigate();
     const { currentUser, logout } = useAuth();
 
@@ -44,14 +52,29 @@ export default function FacultyDashboard() {
     const grandTotal = categories.reduce((s, c) => s + c.score, 0);
     const grandTotalMax = categories.reduce((s, c) => s + c.max, 0);
 
-    const handleNavClick = (id) => {
-        setActiveNav(id);
-        if (id === 'teaching') navigate('/teaching-dashboard');
-        if (id === 'research') navigate('/research-dashboard');
-        if (id === 'expertise') navigate('/expertise-dashboard');
-        if (id === 'coordinator') navigate('/coordinator-dashboard');
-        if (id === 'hod') navigate('/hod-dashboard');
-        if (id === 'dean') navigate('/dean-dashboard');
+    const handleNavClick = (item) => {
+        if (item.expandable) {
+            setOpenDropdowns(prev => ({ ...prev, [item.id]: !prev[item.id] }));
+            // Don't modify activeNav when just expanding the parent.
+            // If they click the parent, they might still navigate if there are no subitems 
+            // but we provide subitems. So just return.
+            return;
+        }
+
+        setActiveNav(item.id);
+        if (item.id === 'teaching') navigate('/teaching-dashboard');
+        if (item.id === 'research') navigate('/research-dashboard');
+        if (item.id === 'expertise') navigate('/expertise-dashboard');
+        if (item.id === 'coordinator') navigate('/coordinator-dashboard');
+        if (item.id === 'hod') navigate('/hod-dashboard');
+        if (item.id === 'dean') navigate('/dean-dashboard');
+    };
+
+    const handleSubNavClick = (parentId, subItem) => {
+        setActiveNav(`${parentId}-${subItem.id}`);
+        if (parentId === 'coordinator') {
+            navigate('/coordinator-dashboard', { state: { section: subItem.path } });
+        }
     };
 
     const handleLogout = () => { logout(); navigate('/'); };
@@ -66,22 +89,40 @@ export default function FacultyDashboard() {
                 </div>
 
                 <nav className="fd-nav">
-                    {navItems.map((item) => (
-                        <button
-                            key={item.id}
-                            className={`fd-nav-item ${activeNav === item.id ? 'fd-nav-item--active' : ''}`}
-                            onClick={() => handleNavClick(item.id)}
-                        >
-                            <span className="fd-nav-icon">{item.icon}</span>
-                            <span className="fd-nav-label">{item.label}</span>
-                            {item.expandable && <span className="fd-nav-arrow">▾</span>}
-                            {item.chip && (
-                                <span className="fd-role-chip" style={{ background: item.chipColor }}>
-                                    {item.chip}
-                                </span>
-                            )}
-                        </button>
-                    ))}
+                    {navItems.map((item) => {
+                        const isOpen = openDropdowns[item.id];
+                        return (
+                            <div key={item.id} className="fd-nav-item-wrapper" style={{ display: 'flex', flexDirection: 'column' }}>
+                                <button
+                                    className={`fd-nav-item ${activeNav === item.id ? 'fd-nav-item--active' : ''}`}
+                                    onClick={() => handleNavClick(item)}
+                                >
+                                    <span className="fd-nav-icon">{item.icon}</span>
+                                    <span className="fd-nav-label">{item.label}</span>
+                                    {item.expandable && <span className={`fd-nav-arrow ${isOpen ? 'fd-nav-arrow--open' : 'fd-nav-arrow--closed'}`}>▾</span>}
+                                    {item.chip && (
+                                        <span className="fd-role-chip" style={{ background: item.chipColor }}>
+                                            {item.chip}
+                                        </span>
+                                    )}
+                                </button>
+                                {item.expandable && item.subItems && (
+                                    <div className={`fd-nav-sub ${isOpen ? 'fd-nav-sub--open' : ''}`}>
+                                        {item.subItems.map(sub => (
+                                            <button
+                                                key={sub.id}
+                                                className={`fd-nav-sub-item ${activeNav === `${item.id}-${sub.id}` ? 'fd-nav-sub-item--active' : ''}`}
+                                                onClick={() => handleSubNavClick(item.id, sub)}
+                                            >
+                                                <span className="fd-nav-sub-icon">{sub.icon}</span>
+                                                {sub.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
                 </nav>
 
                 {/* User info at bottom */}
