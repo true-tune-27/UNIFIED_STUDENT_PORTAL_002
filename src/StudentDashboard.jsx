@@ -67,6 +67,42 @@ const CULTURAL_CERTS = [
     { id: 'cc2', title: 'Music Competition – 1st', desc: '1st Place at the Annual Music Competition.', icon: '🎵', color: '#7c3aed' },
 ];
 
+const SESSIONAL_SUBJECTS = [
+    { code: 'CS501', name: 'Machine Learning', credits: 4 },
+    { code: 'CS502', name: 'Computer Networks', credits: 4 },
+    { code: 'CS503', name: 'Operating Systems', credits: 3 },
+    { code: 'CS504', name: 'Database Management Systems', credits: 3 },
+    { code: 'CS505', name: 'Software Engineering', credits: 3 },
+    { code: 'CS506', name: 'Web Technologies Lab', credits: 2 },
+];
+
+const I_SESSIONAL_MARKS = [
+    { code: 'CS501', obtained: 22, total: 30 },
+    { code: 'CS502', obtained: 25, total: 30 },
+    { code: 'CS503', obtained: 18, total: 30 },
+    { code: 'CS504', obtained: 27, total: 30 },
+    { code: 'CS505', obtained: 20, total: 30 },
+    { code: 'CS506', obtained: 28, total: 30 },
+];
+
+const II_SESSIONAL_MARKS = [
+    { code: 'CS501', obtained: 26, total: 30 },
+    { code: 'CS502', obtained: 23, total: 30 },
+    { code: 'CS503', obtained: 24, total: 30 },
+    { code: 'CS504', obtained: 28, total: 30 },
+    { code: 'CS505', obtained: 22, total: 30 },
+    { code: 'CS506', obtained: 29, total: 30 },
+];
+
+const SEMESTER_MARKS = [
+    { code: 'CS501', obtained: 72, total: 100 },
+    { code: 'CS502', obtained: 78, total: 100 },
+    { code: 'CS503', obtained: 65, total: 100 },
+    { code: 'CS504', obtained: 85, total: 100 },
+    { code: 'CS505', obtained: 70, total: 100 },
+    { code: 'CS506', obtained: 88, total: 100 },
+];
+
 /* ══════════════════════════════════════════════════════════════
    ELIGIBILITY CHECKER
    ══════════════════════════════════════════════════════════════ */
@@ -225,6 +261,7 @@ export default function StudentDashboard() {
     /* ── nav state ── */
     const [eventsDropOpen, setEventsDropOpen] = useState(true);
     const [certsDropOpen, setCertsDropOpen] = useState(false);
+    const [academicDropOpen, setAcademicDropOpen] = useState(false);
     const [activeSection, setActiveSection] = useState('allEvents');
     const [certCategory, setCertCategory] = useState('event');
 
@@ -627,6 +664,101 @@ export default function StudentDashboard() {
         </div>
     );
 
+    /* ═════════════════════════════════════════════════════
+       ACADEMIC PROGRESS SECTION
+       ═════════════════════════════════════════════════════ */
+    const renderAcademicProgress = () => {
+        let marksData, title, examLabel;
+        if (activeSection === 'sessional1') {
+            marksData = I_SESSIONAL_MARKS; title = 'I-Sessional Marks'; examLabel = 'I-Sessional';
+        } else if (activeSection === 'sessional2') {
+            marksData = II_SESSIONAL_MARKS; title = 'II-Sessional Marks'; examLabel = 'II-Sessional';
+        } else {
+            marksData = SEMESTER_MARKS; title = 'Semester Marks'; examLabel = 'Semester';
+        }
+        const totalObtained = marksData.reduce((s, m) => s + m.obtained, 0);
+        const totalMax = marksData.reduce((s, m) => s + m.total, 0);
+        const percentage = ((totalObtained / totalMax) * 100).toFixed(1);
+
+        return (
+            <div className="sd-academic-section">
+                <div className="sd-academic-summary">
+                    <div className="sd-academic-summary-card">
+                        <span className="sd-academic-summary-icon">📊</span>
+                        <div>
+                            <div className="sd-academic-summary-label">Overall Percentage</div>
+                            <div className="sd-academic-summary-value">{percentage}%</div>
+                        </div>
+                    </div>
+                    <div className="sd-academic-summary-card">
+                        <span className="sd-academic-summary-icon">📝</span>
+                        <div>
+                            <div className="sd-academic-summary-label">Total Marks</div>
+                            <div className="sd-academic-summary-value">{totalObtained} / {totalMax}</div>
+                        </div>
+                    </div>
+                    <div className="sd-academic-summary-card">
+                        <span className="sd-academic-summary-icon">📚</span>
+                        <div>
+                            <div className="sd-academic-summary-label">Subjects</div>
+                            <div className="sd-academic-summary-value">{marksData.length}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="sd-marks-table-wrap">
+                    <table className="sd-marks-table">
+                        <thead>
+                            <tr>
+                                <th>S.No</th>
+                                <th>Subject Code</th>
+                                <th>Subject Name</th>
+                                <th>Credits</th>
+                                <th>Marks Obtained</th>
+                                <th>Total Marks</th>
+                                <th>Percentage</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {marksData.map((mark, idx) => {
+                                const subj = SESSIONAL_SUBJECTS.find(s => s.code === mark.code);
+                                const pct = ((mark.obtained / mark.total) * 100).toFixed(1);
+                                const passed = pct >= 40;
+                                return (
+                                    <tr key={mark.code} className={passed ? '' : 'sd-marks-fail'}>
+                                        <td>{idx + 1}</td>
+                                        <td className="sd-marks-code">{mark.code}</td>
+                                        <td>{subj?.name || '—'}</td>
+                                        <td>{subj?.credits || '—'}</td>
+                                        <td className="sd-marks-obtained">{mark.obtained}</td>
+                                        <td>{mark.total}</td>
+                                        <td>
+                                            <div className="sd-marks-pct-bar">
+                                                <div className="sd-marks-pct-fill" style={{ width: `${pct}%`, background: pct >= 75 ? '#22c55e' : pct >= 50 ? '#eab308' : '#ef4444' }} />
+                                            </div>
+                                            <span className="sd-marks-pct-text">{pct}%</span>
+                                        </td>
+                                        <td><span className={`sd-marks-status ${passed ? 'pass' : 'fail'}`}>{passed ? '✅ Pass' : '❌ Fail'}</span></td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colSpan="4"><strong>Total</strong></td>
+                                <td className="sd-marks-obtained"><strong>{totalObtained}</strong></td>
+                                <td><strong>{totalMax}</strong></td>
+                                <td><strong>{percentage}%</strong></td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        );
+    };
+
     /* ═════════════════════════════════════════
        FULL RENDER
        ═════════════════════════════════════════ */
@@ -707,6 +839,30 @@ export default function StudentDashboard() {
                             ))}
                         </div>
                     )}
+
+                    {/* ── Academic Progress dropdown ── */}
+                    <button className="sd-nav-group-btn" onClick={() => setAcademicDropOpen(v => !v)}>
+                        <span className="sd-nav-icon">📊</span>
+                        <span className="sd-nav-label">Academic Progress</span>
+                        <span className={`sd-nav-arrow ${academicDropOpen ? 'open' : ''}`}>▶</span>
+                    </button>
+
+                    {academicDropOpen && (
+                        <div className="sd-nav-dropdown">
+                            {[
+                                { key: 'sessional1', icon: '📝', label: 'I-Sessional Marks' },
+                                { key: 'sessional2', icon: '📝', label: 'II-Sessional Marks' },
+                                { key: 'semester', icon: '📄', label: 'Semester Marks' },
+                            ].map(item => (
+                                <button key={item.key}
+                                    className={`sd-nav-sub ${activeSection === item.key ? 'active' : ''}`}
+                                    onClick={() => nav(item.key)}>
+                                    <span>{item.icon}</span>
+                                    <span className="sd-nav-sub-label">{item.label}</span>
+                                </button>
+                            ))}
+                        </div>
+                    )}
                 </nav>
 
                 <div className="sd-sidebar-footer">
@@ -724,6 +880,9 @@ export default function StudentDashboard() {
                         {activeSection === 'calendar' && '📅 Event Calendar'}
                         {activeSection === 'myregistrations' && '✅ My Registrations'}
                         {activeSection === 'certificates' && '🎓 Certificates'}
+                        {activeSection === 'sessional1' && '📝 I-Sessional Marks'}
+                        {activeSection === 'sessional2' && '📝 II-Sessional Marks'}
+                        {activeSection === 'semester' && '📄 Semester Marks'}
                     </div>
                     <div className="sd-header-stats">
                         <div className="sd-stat"><span className="sd-stat-num">{stats.total}</span><span className="sd-stat-label">Total</span></div>
@@ -779,6 +938,7 @@ export default function StudentDashboard() {
                 {activeSection === 'calendar' && (selectedEvent ? renderEventDetail(selectedEvent) : renderCalendar())}
                 {activeSection === 'myregistrations' && (selectedEvent ? renderEventDetail(selectedEvent) : renderMyRegistrations())}
                 {activeSection === 'certificates' && renderCertificates()}
+                {(activeSection === 'sessional1' || activeSection === 'sessional2' || activeSection === 'semester') && renderAcademicProgress()}
             </main>
 
             {/* ═══ REGISTER CONFIRM MODAL ═══ */}
