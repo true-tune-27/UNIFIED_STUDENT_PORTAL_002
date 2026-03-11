@@ -6,7 +6,7 @@ import logoEmblem from './assets/logo.png';
 import { useAuth } from './AuthContext';
 import {
     saveRegistration, removeRegistration,
-    getStudentRegistrations, getEventStatuses
+    getStudentRegistrations, getEventStatuses, getCustomEvents, getDeletedEvents
 } from './db';
 
 /* ══════════════════════════════════════════════════════════════
@@ -198,9 +198,24 @@ export default function StudentDashboard() {
         return () => { window.removeEventListener('storage', refresh); clearInterval(timer); };
     }, []);
 
-    // merge coordinator overrides into the static event list
-    const liveEvents = useMemo(() =>
-        EVENTS.map(ev => {
+    /* ── custom & deleted events from coordinator ── */
+    const [customEvents, setCustomEvents] = useState(() => getCustomEvents());
+    const [deletedEvents, setDeletedEvents] = useState(() => getDeletedEvents());
+
+    useEffect(() => {
+        const refreshCustom = () => {
+            setCustomEvents(getCustomEvents());
+            setDeletedEvents(getDeletedEvents());
+        };
+        window.addEventListener('storage', refreshCustom);
+        const timer = setInterval(refreshCustom, 2000);
+        return () => { window.removeEventListener('storage', refreshCustom); clearInterval(timer); };
+    }, []);
+
+    // merge static and custom events, then apply overrides
+    const liveEvents = useMemo(() => {
+        const allEvents = [...EVENTS, ...customEvents].filter(ev => !deletedEvents.includes(ev.id));
+        return allEvents.map(ev => {
             const override = eventStatuses[ev.id];
             if (!override) return ev;
             return {
@@ -208,8 +223,8 @@ export default function StudentDashboard() {
                 registrationOpen: override.registrationOpen ?? ev.registrationOpen,
                 criteria: override.criteria ?? ev.criteria,
             };
-        }),
-        [eventStatuses]);
+        });
+    }, [eventStatuses, customEvents]);
 
     /* ── registered IDs (driven from db.js) ── */
     const [dbRegs, setDbRegs] = useState(() => getStudentRegistrations(student.rollNo));
@@ -247,6 +262,11 @@ export default function StudentDashboard() {
     const [toast, setToast] = useState(null);
     const qrCanvasRef = useRef(null);
 
+    /* ── payment ── */
+    const [showPaymentStep, setShowPaymentStep] = useState(false);
+    const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+    const [paymentMethod, setPaymentMethod] = useState('upi');
+
     /* ── calendar ── */
     const [calMonth, setCalMonth] = useState(new Date().getMonth());
     const [calYear, setCalYear] = useState(new Date().getFullYear());
@@ -269,6 +289,8 @@ export default function StudentDashboard() {
             if (filterStatus === 'upcoming' && new Date(ev.date) < now) return false;
             if (filterStatus === 'past' && new Date(ev.date) >= now) return false;
             if (filterStatus === 'registered' && !registeredIds.includes(ev.id)) return false;
+            // hide past events from the default view
+            if (filterStatus === 'all' && new Date(ev.date) < now) return false;
             return true;
         });
     }, [liveEvents, searchTerm, filterNature, filterStatus, registeredIds]);
@@ -310,8 +332,22 @@ export default function StudentDashboard() {
         upcoming: upcomingEvents.length,
     }), [liveEvents, registeredIds.length, upcomingEvents.length]);
 
-    /* ── REGISTRATION ── */
-    const openRegisterModal = (ev) => { setRegisterTarget(ev); setShowRegisterModal(true); };
+    /* ── REGISTRATION & PAYMENT ── */
+    const openRegisterModal = (ev) => {
+        setRegisterTarget(ev);
+        setShowRegisterModal(true);
+        setShowPaymentStep(false);
+        setIsProcessingPayment(false);
+        setPaymentMethod('upi');
+    };
+
+    const handleMockPayment = () => {
+        setIsProcessingPayment(true);
+        setTimeout(() => {
+            setIsProcessingPayment(false);
+            confirmRegister();
+        }, 2000);
+    };
 
     const confirmRegister = () => {
         if (!registerTarget) return;
@@ -633,245 +669,367 @@ export default function StudentDashboard() {
     return (
         <div className="sd-root">
 
-            {/* ═══ SIDEBAR ═══ */}
-            <aside className="sd-sidebar">
-                <div className="sd-sidebar-brand">
+            {/* ═══ TOP NAVBAR (NEW) ═══ */}
+            <header className="sd-top-navbar">
+                <div className="sd-navbar-brand">
                     <img src={logoEmblem} alt="Logo" className="sd-brand-logo" />
                     <div>
-                        <div className="sd-brand-name">Student Portal</div>
-                        <div className="sd-brand-sub">Aditya University</div>
+                        <div className="sd-brand-name">Aditya University</div>
+                        <div className="sd-brand-sub">Student Portal</div>
                     </div>
                 </div>
 
-                <div className="sd-student-card">
-                    <div className="sd-student-avatar">{student.name.charAt(0)}</div>
-                    <div className="sd-student-info">
-                        <div className="sd-student-name">{student.name}</div>
-                        <div className="sd-student-roll">{student.rollNo}</div>
-                        <div className="sd-student-meta">{student.branch} · Year {student.year}</div>
+                <div className="sd-navbar-user">
+                    <div className="sd-user-info">
+                        <span className="sd-user-name">{student.name}</span>
+                        <span className="sd-user-roll">{student.rollNo}</span>
                     </div>
-                    <button className="sd-profile-btn" onClick={() => setShowProfileModal(true)} title="View Profile">👤</button>
+                    <div className="sd-user-avatar" onClick={() => setShowProfileModal(true)} title="View Profile">
+                        {student.name.charAt(0)}
+                    </div>
                 </div>
+            </header>
 
-                <nav className="sd-nav">
+            <div className="sd-content-wrapper">
+                {/* ═══ SIDEBAR ═══ */}
+                <aside className="sd-sidebar">
+                    <nav className="sd-nav">
+                        <button className={`sd-nav-group-btn ${activeSection === 'overview' ? 'active' : ''}`} onClick={() => { nav('overview'); setEventsDropOpen(false); setCertsDropOpen(false); }}>
+                            <span className="sd-nav-icon">📊</span>
+                            <span className="sd-nav-label">Dashboard Home</span>
+                        </button>
 
-                    {/* ── Events dropdown ── */}
-                    <button className="sd-nav-group-btn" onClick={() => setEventsDropOpen(v => !v)}>
-                        <span className="sd-nav-icon">🗓️</span>
-                        <span className="sd-nav-label">Events</span>
-                        {stats.upcoming > 0 && <span className="sd-nav-badge">{stats.upcoming}</span>}
-                        <span className={`sd-nav-arrow ${eventsDropOpen ? 'open' : ''}`}>▶</span>
-                    </button>
+                        {/* ── Events dropdown ── */}
+                        <button className="sd-nav-group-btn" onClick={() => setEventsDropOpen(v => !v)}>
+                            <span className="sd-nav-icon">🗓️</span>
+                            <span className="sd-nav-label">Events</span>
+                            {stats.upcoming > 0 && <span className="sd-nav-badge">{stats.upcoming}</span>}
+                            <span className={`sd-nav-arrow ${eventsDropOpen ? 'open' : ''}`}>▶</span>
+                        </button>
 
-                    {eventsDropOpen && (
-                        <div className="sd-nav-dropdown">
-                            {[
-                                { key: 'allEvents', icon: '📋', label: 'All Events' },
-                                { key: 'upcoming', icon: '🔔', label: 'Upcoming', badge: stats.upcoming },
-                                { key: 'calendar', icon: '📅', label: 'Calendar' },
-                                { key: 'myregistrations', icon: '✅', label: 'My Registrations', badge: stats.registered },
-                            ].map(item => (
-                                <button key={item.key}
-                                    className={`sd-nav-sub ${activeSection === item.key ? 'active' : ''}`}
-                                    onClick={() => nav(item.key)}>
-                                    <span>{item.icon}</span>
-                                    <span className="sd-nav-sub-label">{item.label}</span>
-                                    {item.badge > 0 && <span className="sd-nav-badge sm">{item.badge}</span>}
-                                </button>
-                            ))}
-                        </div>
-                    )}
-
-                    {/* ── Certificates dropdown ── */}
-                    <button className="sd-nav-group-btn" onClick={() => setCertsDropOpen(v => !v)}>
-                        <span className="sd-nav-icon">🎓</span>
-                        <span className="sd-nav-label">Certificates</span>
-                        <span className={`sd-nav-arrow ${certsDropOpen ? 'open' : ''}`}>▶</span>
-                    </button>
-
-                    {certsDropOpen && (
-                        <div className="sd-nav-dropdown">
-                            {[
-                                { key: 'event', icon: '🏆', label: 'Event Certificates' },
-                                { key: 'academic', icon: '📜', label: 'Academic Certificates' },
-                                { key: 'technical', icon: '⚙️', label: 'Technical Certificates' },
-                                { key: 'sports', icon: '🏅', label: 'Sports Certificates' },
-                                { key: 'cultural', icon: '🎭', label: 'Cultural Certificates' },
-                            ].map(item => (
-                                <button key={item.key}
-                                    className={`sd-nav-sub ${activeSection === 'certificates' && certCategory === item.key ? 'active' : ''}`}
-                                    onClick={() => { setCertCategory(item.key); nav('certificates'); }}>
-                                    <span>{item.icon}</span>
-                                    <span className="sd-nav-sub-label">{item.label}</span>
-                                </button>
-                            ))}
-                        </div>
-                    )}
-                </nav>
-
-                <div className="sd-sidebar-footer">
-                    <button className="sd-btn-logout" onClick={() => { logout(); navigate('/'); }}>Logout</button>
-                </div>
-            </aside>
-
-            {/* ═══ MAIN ═══ */}
-            <main className="sd-main">
-                {/* Header */}
-                <header className="sd-header">
-                    <div className="sd-header-title">
-                        {activeSection === 'allEvents' && '🗓️ All Events'}
-                        {activeSection === 'upcoming' && '🔔 Upcoming Events'}
-                        {activeSection === 'calendar' && '📅 Event Calendar'}
-                        {activeSection === 'myregistrations' && '✅ My Registrations'}
-                        {activeSection === 'certificates' && '🎓 Certificates'}
-                    </div>
-                    <div className="sd-header-stats">
-                        <div className="sd-stat"><span className="sd-stat-num">{stats.total}</span><span className="sd-stat-label">Total</span></div>
-                        <div className="sd-stat"><span className="sd-stat-num sd-stat-green">{stats.open}</span><span className="sd-stat-label">Open</span></div>
-                        <div className="sd-stat"><span className="sd-stat-num sd-stat-blue">{stats.registered}</span><span className="sd-stat-label">Registered</span></div>
-                        <div className="sd-stat"><span className="sd-stat-num sd-stat-orange">{stats.upcoming}</span><span className="sd-stat-label">Upcoming</span></div>
-                    </div>
-                </header>
-
-                {/* Toast */}
-                {toast && <div className="sd-toast">🎉 {toast}</div>}
-
-                {/* All Events */}
-                {activeSection === 'allEvents' && (
-                    selectedEvent ? renderEventDetail(selectedEvent) : (
-                        <div className="sd-events-section">
-                            <div className="sd-filters-bar">
-                                <div className="sd-search-wrap">
-                                    <span className="sd-search-icon">🔍</span>
-                                    <input className="sd-search" placeholder="Search events or clubs…" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
-                                </div>
-                                <select className="sd-filter-select" value={filterNature} onChange={e => setFilterNature(e.target.value)}>
-                                    <option value="all">All Types</option>
-                                    {NATURES.map(n => <option key={n} value={n}>{n}</option>)}
-                                </select>
-                                <select className="sd-filter-select" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-                                    <option value="all">All Status</option>
-                                    <option value="open">Open Registration</option>
-                                    <option value="closed">Closed</option>
-                                    <option value="upcoming">Upcoming</option>
-                                    <option value="past">Past</option>
-                                    <option value="registered">Registered</option>
-                                </select>
-                                {(searchTerm || filterNature !== 'all' || filterStatus !== 'all') && (
-                                    <button className="sd-clear-btn" onClick={() => { setSearchTerm(''); setFilterNature('all'); setFilterStatus('all'); }}>✕ Clear</button>
-                                )}
+                        {eventsDropOpen && (
+                            <div className="sd-nav-dropdown">
+                                {[
+                                    { key: 'allEvents', icon: '📋', label: 'All Events' },
+                                    { key: 'upcoming', icon: '🔔', label: 'Upcoming', badge: stats.upcoming },
+                                    { key: 'calendar', icon: '📅', label: 'Calendar' },
+                                    { key: 'myregistrations', icon: '✅', label: 'My Registrations', badge: stats.registered },
+                                ].map(item => (
+                                    <button key={item.key}
+                                        className={`sd-nav-sub ${activeSection === item.key ? 'active' : ''}`}
+                                        onClick={() => nav(item.key)}>
+                                        <span>{item.icon}</span>
+                                        <span className="sd-nav-sub-label">{item.label}</span>
+                                        {item.badge > 0 && <span className="sd-nav-badge sm">{item.badge}</span>}
+                                    </button>
+                                ))}
                             </div>
-                            {filteredEvents.length === 0
-                                ? <div className="sd-empty"><span>🎪</span><p>No events found.</p></div>
-                                : <div className="sd-events-grid">
-                                    {filteredEvents.map(ev =>
-                                        <EventCard key={ev.id} ev={ev} student={student} registeredIds={registeredIds}
-                                            onView={() => setSelectedEvent(ev)}
-                                            onRegister={() => openRegisterModal(ev)}
-                                            onUnregister={() => unregister(ev.id)} />
-                                    )}
-                                </div>}
+                        )}
+
+                        {/* ── Certificates dropdown ── */}
+                        <button className="sd-nav-group-btn" onClick={() => setCertsDropOpen(v => !v)}>
+                            <span className="sd-nav-icon">🎓</span>
+                            <span className="sd-nav-label">Certificates</span>
+                            <span className={`sd-nav-arrow ${certsDropOpen ? 'open' : ''}`}>▶</span>
+                        </button>
+
+                        {certsDropOpen && (
+                            <div className="sd-nav-dropdown">
+                                {[
+                                    { key: 'event', icon: '🏆', label: 'Event Certificates' },
+                                    { key: 'academic', icon: '📜', label: 'Academic Certificates' },
+                                    { key: 'technical', icon: '⚙️', label: 'Technical Certificates' },
+                                    { key: 'sports', icon: '🏅', label: 'Sports Certificates' },
+                                    { key: 'cultural', icon: '🎭', label: 'Cultural Certificates' },
+                                ].map(item => (
+                                    <button key={item.key}
+                                        className={`sd-nav-sub ${activeSection === 'certificates' && certCategory === item.key ? 'active' : ''}`}
+                                        onClick={() => { setCertCategory(item.key); nav('certificates'); }}>
+                                        <span>{item.icon}</span>
+                                        <span className="sd-nav-sub-label">{item.label}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </nav>
+
+                    <div className="sd-sidebar-footer">
+                        <button className="sd-btn-logout" onClick={() => { logout(); navigate('/'); }}>
+                            <span className="sd-nav-icon">🚪</span> Logout
+                        </button>
+                    </div>
+                </aside>
+
+                {/* ═══ MAIN ═══ */}
+                <main className="sd-main">
+                    {/* Section Header */}
+                    <header className="sd-section-header">
+                        <div className="sd-section-title">
+                            {activeSection === 'overview' && 'Dashboard Overview'}
+                            {activeSection === 'allEvents' && 'All Events'}
+                            {activeSection === 'upcoming' && 'Upcoming Events'}
+                            {activeSection === 'calendar' && 'Event Calendar'}
+                            {activeSection === 'myregistrations' && 'My Registrations'}
+                            {activeSection === 'certificates' && 'Certificates'}
                         </div>
-                    )
+                        {activeSection !== 'overview' && (
+                            <div className="sd-section-stats">
+                                <div className="sd-stat"><span className="sd-stat-num">{stats.total}</span><span className="sd-stat-label">Total</span></div>
+                                <div className="sd-stat"><span className="sd-stat-num sd-stat-green">{stats.open}</span><span className="sd-stat-label">Open</span></div>
+                                <div className="sd-stat"><span className="sd-stat-num sd-stat-blue">{stats.registered}</span><span className="sd-stat-label">Registered</span></div>
+                                <div className="sd-stat"><span className="sd-stat-num sd-stat-orange">{stats.upcoming}</span><span className="sd-stat-label">Upcoming</span></div>
+                            </div>
+                        )}
+                    </header>
+
+                    {/* Toast */}
+                    {toast && <div className="sd-toast">✓ {toast}</div>}
+
+                    {/* ═══ OVERVIEW SECTION (NEW) ═══ */}
+                    {activeSection === 'overview' && (
+                        <div className="sd-overview-section">
+                            {/* Student Profile Overview Card */}
+                            <div className="sd-profile-overview-card">
+                                <div className="sd-profile-overview-header">
+                                    <div className="sd-profile-avatar-lg">{student.name.charAt(0)}</div>
+                                    <div className="sd-profile-primary-info">
+                                        <h2>{student.name}</h2>
+                                        <p>{student.rollNo}</p>
+                                    </div>
+                                    <button className="sd-btn-view-full-profile" onClick={() => setShowProfileModal(true)}>Full Profile</button>
+                                </div>
+                                <div className="sd-profile-overview-stats">
+                                    <div className="sd-overview-stat-box">
+                                        <span className="sd-overview-stat-label">Branch</span>
+                                        <span className="sd-overview-stat-val">{student.branch}</span>
+                                    </div>
+                                    <div className="sd-overview-stat-box">
+                                        <span className="sd-overview-stat-label">Year/Sem</span>
+                                        <span className="sd-overview-stat-val">{student.year} Year, Sem {student.semester}</span>
+                                    </div>
+                                    <div className="sd-overview-stat-box">
+                                        <span className="sd-overview-stat-label">CGPA</span>
+                                        <span className="sd-overview-stat-val">{student.cgpa}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Highlight Cards (Registrations & Upcoming) */}
+                            <div className="sd-overview-highlights">
+                                <div className="sd-highlight-card" onClick={() => { nav('myregistrations'); setEventsDropOpen(true); }}>
+                                    <div className="sd-highlight-icon" style={{ background: '#e0e7ff', color: '#4f46e5' }}>✅</div>
+                                    <div className="sd-highlight-info">
+                                        <h3>{stats.registered}</h3>
+                                        <p>Active Registrations</p>
+                                    </div>
+                                </div>
+                                <div className="sd-highlight-card" onClick={() => { nav('upcoming'); setEventsDropOpen(true); }}>
+                                    <div className="sd-highlight-icon" style={{ background: '#ffedd5', color: '#ea580c' }}>🔔</div>
+                                    <div className="sd-highlight-info">
+                                        <h3>{stats.upcoming}</h3>
+                                        <p>Upcoming Events</p>
+                                    </div>
+                                </div>
+                                <div className="sd-highlight-card" onClick={() => { nav('certificates'); setCertsDropOpen(true); }}>
+                                    <div className="sd-highlight-icon" style={{ background: '#fce7f3', color: '#be185d' }}>🎓</div>
+                                    <div className="sd-highlight-info">
+                                        <h3>Certificates</h3>
+                                        <p>View Achievements</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Quick Look at Recent/Featured Events could go here */}
+                        </div>
+                    )}
+
+                    {/* All Events */}
+                    {activeSection === 'allEvents' && (
+                        selectedEvent ? renderEventDetail(selectedEvent) : (
+                            <div className="sd-events-section">
+                                <div className="sd-filters-bar">
+                                    <div className="sd-search-wrap">
+                                        <span className="sd-search-icon">🔍</span>
+                                        <input className="sd-search" placeholder="Search events or clubs…" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+                                    </div>
+                                    <select className="sd-filter-select" value={filterNature} onChange={e => setFilterNature(e.target.value)}>
+                                        <option value="all">All Types</option>
+                                        {NATURES.map(n => <option key={n} value={n}>{n}</option>)}
+                                    </select>
+                                    <select className="sd-filter-select" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+                                        <option value="all">All Status</option>
+                                        <option value="open">Open Registration</option>
+                                        <option value="closed">Closed</option>
+                                        <option value="upcoming">Upcoming</option>
+                                        <option value="past">Past</option>
+                                        <option value="registered">Registered</option>
+                                    </select>
+                                    {(searchTerm || filterNature !== 'all' || filterStatus !== 'all') && (
+                                        <button className="sd-clear-btn" onClick={() => { setSearchTerm(''); setFilterNature('all'); setFilterStatus('all'); }}>✕ Clear</button>
+                                    )}
+                                </div>
+                                {filteredEvents.length === 0
+                                    ? <div className="sd-empty"><span>🎪</span><p>No events found.</p></div>
+                                    : <div className="sd-events-grid">
+                                        {filteredEvents.map(ev =>
+                                            <EventCard key={ev.id} ev={ev} student={student} registeredIds={registeredIds}
+                                                onView={() => setSelectedEvent(ev)}
+                                                onRegister={() => openRegisterModal(ev)}
+                                                onUnregister={() => unregister(ev.id)} />
+                                        )}
+                                    </div>}
+                            </div>
+                        )
+                    )}
+
+                    {activeSection === 'upcoming' && (selectedEvent ? renderEventDetail(selectedEvent) : renderUpcoming())}
+                    {activeSection === 'calendar' && (selectedEvent ? renderEventDetail(selectedEvent) : renderCalendar())}
+                    {activeSection === 'myregistrations' && (selectedEvent ? renderEventDetail(selectedEvent) : renderMyRegistrations())}
+                    {activeSection === 'certificates' && renderCertificates()}
+                </main>
+
+                {/* ═══ REGISTER CONFIRM MODAL ═══ */}
+                {showRegisterModal && registerTarget && (() => {
+                    const { eligible, issues } = checkEligibility(registerTarget, student);
+                    const c = registerTarget.criteria || DEFAULT_CRITERIA;
+
+                    if (showPaymentStep) {
+                        return (
+                            <div className="sd-modal-overlay" onClick={() => !isProcessingPayment && setShowRegisterModal(false)}>
+                                <div className="sd-modal" onClick={e => e.stopPropagation()}>
+                                    {!isProcessingPayment && <button className="sd-modal-close" onClick={() => setShowRegisterModal(false)}>×</button>}
+                                    <h3 className="sd-modal-title">Secure Checkout</h3>
+                                    <p className="sd-modal-sub">Amount to Pay: <strong>₹{c.fee}</strong></p>
+
+                                    <div className="sd-payment-methods">
+                                        <label className={`sd-pay-method ${paymentMethod === 'upi' ? 'active' : ''}`}>
+                                            <input type="radio" name="paymentMethod" checked={paymentMethod === 'upi'} onChange={() => setPaymentMethod('upi')} /> UPI (GPay, PhonePe)
+                                        </label>
+                                        <label className={`sd-pay-method ${paymentMethod === 'card' ? 'active' : ''}`}>
+                                            <input type="radio" name="paymentMethod" checked={paymentMethod === 'card'} onChange={() => setPaymentMethod('card')} /> Credit / Debit Card
+                                        </label>
+                                    </div>
+
+                                    {paymentMethod === 'upi' && (
+                                        <div className="sd-pay-details">
+                                            <input type="text" placeholder="Enter UPI ID (e.g. name@okhdfcbank)" className="sd-pay-input" />
+                                        </div>
+                                    )}
+                                    {paymentMethod === 'card' && (
+                                        <div className="sd-pay-details">
+                                            <input type="text" placeholder="Card Number" className="sd-pay-input" />
+                                            <div style={{ display: 'flex', gap: '10px' }}>
+                                                <input type="text" placeholder="MM/YY" className="sd-pay-input" />
+                                                <input type="text" placeholder="CVV" className="sd-pay-input" />
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div className="sd-modal-actions">
+                                        <button className="sd-modal-cancel" onClick={() => setShowPaymentStep(false)} disabled={isProcessingPayment}>Back</button>
+                                        <button className="sd-modal-confirm" onClick={handleMockPayment} disabled={isProcessingPayment}>
+                                            {isProcessingPayment ? 'Processing...' : `Pay ₹${c.fee}`}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    }
+
+                    return (
+                        <div className="sd-modal-overlay" onClick={() => setShowRegisterModal(false)}>
+                            <div className="sd-modal" onClick={e => e.stopPropagation()}>
+                                <button className="sd-modal-close" onClick={() => setShowRegisterModal(false)}>×</button>
+                                <div className="sd-modal-icon">{NATURE_ICONS[registerTarget.nature] || '📌'}</div>
+                                <h3 className="sd-modal-title">Confirm Registration</h3>
+                                <p className="sd-modal-sub"><strong>{registerTarget.name}</strong></p>
+                                <div className="sd-modal-details">
+                                    <div className="sd-modal-row"><span>📅 Date</span><span>{new Date(registerTarget.date).toLocaleDateString('en-IN')}</span></div>
+                                    <div className="sd-modal-row"><span>📍 Venue</span><span>{registerTarget.venue}</span></div>
+                                    <div className="sd-modal-row"><span>👤 Coordinator</span><span>{registerTarget.coordinator}</span></div>
+                                    {c.isPaid && <div className="sd-modal-row fee"><span>💰 Entry Fee</span><span>₹{c.fee}</span></div>}
+                                </div>
+                                {!eligible && (
+                                    <div className="sd-modal-ineligible">❌ You do not meet the eligibility criteria:
+                                        <ul>{issues.map((iss, i) => <li key={i}>{iss}</li>)}</ul>
+                                    </div>
+                                )}
+                                <div className="sd-modal-actions">
+                                    <button className="sd-modal-cancel" onClick={() => setShowRegisterModal(false)}>Cancel</button>
+                                    {c.isPaid ? (
+                                        <button className="sd-modal-confirm" disabled={!eligible} onClick={() => setShowPaymentStep(true)}>
+                                            Proceed to Pay ₹{c.fee}
+                                        </button>
+                                    ) : (
+                                        <button className="sd-modal-confirm" disabled={!eligible} onClick={confirmRegister}>
+                                            Confirm Registration
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })()}
+
+                {/* ═══ QR CODE MODAL ═══ */}
+                {qrDoc && (
+                    <div className="sd-modal-overlay" onClick={() => setQrDoc(null)}>
+                        <div className="sd-qr-modal" onClick={e => e.stopPropagation()}>
+                            <button className="sd-modal-close" onClick={() => setQrDoc(null)}>×</button>
+                            <h3 className="sd-modal-title">📲 Registration QR Code</h3>
+                            <p className="sd-modal-sub">{qrDoc.eventName}</p>
+
+                            <div id="sd-qr-canvas" className="sd-qr-wrapper">
+                                <QRCodeCanvas
+                                    value={JSON.stringify({
+                                        token: qrDoc.qrToken,
+                                        student: qrDoc.studentName,
+                                        rollNo: qrDoc.rollNo,
+                                        event: qrDoc.eventName,
+                                        date: qrDoc.eventDate,
+                                        venue: qrDoc.venue,
+                                        registeredAt: qrDoc.registeredAt,
+                                    })}
+                                    size={200}
+                                    bgColor="#ffffff"
+                                    fgColor="#4f46e5"
+                                    level="H"
+                                />
+                            </div>
+
+                            <div className="sd-qr-details">
+                                <div className="sd-qr-row"><span>👤 Student</span><strong>{qrDoc.studentName}</strong></div>
+                                <div className="sd-qr-row"><span>🎫 Roll No</span><strong>{qrDoc.rollNo}</strong></div>
+                                <div className="sd-qr-row"><span>📅 Event Date</span><strong>{new Date(qrDoc.eventDate).toLocaleDateString('en-IN')}</strong></div>
+                                <div className="sd-qr-row"><span>📍 Venue</span><strong>{qrDoc.venue}</strong></div>
+                                <div className="sd-qr-row"><span>🕐 Registered</span><strong>{new Date(qrDoc.registeredAt).toLocaleString('en-IN')}</strong></div>
+                                <div className="sd-qr-token">Token: {qrDoc.qrToken?.slice(0, 20)}…</div>
+                            </div>
+
+                            <button className="sd-qr-download-btn" onClick={downloadQR}>⬇ Download QR PNG</button>
+                        </div>
+                    </div>
                 )}
 
-                {activeSection === 'upcoming' && (selectedEvent ? renderEventDetail(selectedEvent) : renderUpcoming())}
-                {activeSection === 'calendar' && (selectedEvent ? renderEventDetail(selectedEvent) : renderCalendar())}
-                {activeSection === 'myregistrations' && (selectedEvent ? renderEventDetail(selectedEvent) : renderMyRegistrations())}
-                {activeSection === 'certificates' && renderCertificates()}
-            </main>
-
-            {/* ═══ REGISTER CONFIRM MODAL ═══ */}
-            {showRegisterModal && registerTarget && (() => {
-                const { eligible, issues } = checkEligibility(registerTarget, student);
-                const c = registerTarget.criteria || DEFAULT_CRITERIA;
-                return (
-                    <div className="sd-modal-overlay" onClick={() => setShowRegisterModal(false)}>
-                        <div className="sd-modal" onClick={e => e.stopPropagation()}>
-                            <button className="sd-modal-close" onClick={() => setShowRegisterModal(false)}>×</button>
-                            <div className="sd-modal-icon">{NATURE_ICONS[registerTarget.nature] || '📌'}</div>
-                            <h3 className="sd-modal-title">Confirm Registration</h3>
-                            <p className="sd-modal-sub"><strong>{registerTarget.name}</strong></p>
-                            <div className="sd-modal-details">
-                                <div className="sd-modal-row"><span>📅 Date</span><span>{new Date(registerTarget.date).toLocaleDateString('en-IN')}</span></div>
-                                <div className="sd-modal-row"><span>📍 Venue</span><span>{registerTarget.venue}</span></div>
-                                <div className="sd-modal-row"><span>👤 Coordinator</span><span>{registerTarget.coordinator}</span></div>
-                                {c.isPaid && <div className="sd-modal-row fee"><span>💰 Entry Fee</span><span>₹{c.fee}</span></div>}
+                {/* ═══ PROFILE MODAL ═══ */}
+                {showProfileModal && (
+                    <div className="sd-modal-overlay" onClick={() => setShowProfileModal(false)}>
+                        <div className="sd-modal sd-profile-modal" onClick={e => e.stopPropagation()}>
+                            <button className="sd-modal-close" onClick={() => setShowProfileModal(false)}>×</button>
+                            <div className="sd-profile-modal-avatar">{student.name.charAt(0)}</div>
+                            <h3 className="sd-modal-title">{student.name}</h3>
+                            <div className="sd-profile-grid">
+                                {[['Roll No', student.rollNo], ['Branch', student.branch], ['Year', student.year], ['Section', student.section], ['Semester', student.semester], ['CGPA', student.cgpa], ['Gender', student.gender], ['Nationality', student.nationality], ['Region', student.region]].map(([l, v]) => (
+                                    <div className="sd-profile-field" key={l}><label>{l}</label><span style={{ textTransform: 'capitalize' }}>{v}</span></div>
+                                ))}
+                                <div className="sd-profile-field full"><label>Email</label><span>{student.email}</span></div>
+                                <div className="sd-profile-field full"><label>Phone</label><span>{student.phone}</span></div>
                             </div>
-                            {!eligible && (
-                                <div className="sd-modal-ineligible">❌ You do not meet the eligibility criteria:
-                                    <ul>{issues.map((iss, i) => <li key={i}>{iss}</li>)}</ul>
-                                </div>
-                            )}
-                            <div className="sd-modal-actions">
-                                <button className="sd-modal-cancel" onClick={() => setShowRegisterModal(false)}>Cancel</button>
-                                <button className="sd-modal-confirm" disabled={!eligible} onClick={confirmRegister}>
-                                    {c.isPaid ? `Pay ₹${c.fee} & Register` : 'Confirm Registration'}
-                                </button>
-                            </div>
+                            <p className="sd-profile-note">Your profile determines event eligibility. Contact admin to update.</p>
                         </div>
                     </div>
-                );
-            })()}
-
-            {/* ═══ QR CODE MODAL ═══ */}
-            {qrDoc && (
-                <div className="sd-modal-overlay" onClick={() => setQrDoc(null)}>
-                    <div className="sd-qr-modal" onClick={e => e.stopPropagation()}>
-                        <button className="sd-modal-close" onClick={() => setQrDoc(null)}>×</button>
-                        <h3 className="sd-modal-title">📲 Registration QR Code</h3>
-                        <p className="sd-modal-sub">{qrDoc.eventName}</p>
-
-                        <div id="sd-qr-canvas" className="sd-qr-wrapper">
-                            <QRCodeCanvas
-                                value={JSON.stringify({
-                                    token: qrDoc.qrToken,
-                                    student: qrDoc.studentName,
-                                    rollNo: qrDoc.rollNo,
-                                    event: qrDoc.eventName,
-                                    date: qrDoc.eventDate,
-                                    venue: qrDoc.venue,
-                                    registeredAt: qrDoc.registeredAt,
-                                })}
-                                size={200}
-                                bgColor="#1a1d27"
-                                fgColor="#818cf8"
-                                level="H"
-                            />
-                        </div>
-
-                        <div className="sd-qr-details">
-                            <div className="sd-qr-row"><span>👤 Student</span><strong>{qrDoc.studentName}</strong></div>
-                            <div className="sd-qr-row"><span>🎫 Roll No</span><strong>{qrDoc.rollNo}</strong></div>
-                            <div className="sd-qr-row"><span>📅 Event Date</span><strong>{new Date(qrDoc.eventDate).toLocaleDateString('en-IN')}</strong></div>
-                            <div className="sd-qr-row"><span>📍 Venue</span><strong>{qrDoc.venue}</strong></div>
-                            <div className="sd-qr-row"><span>🕐 Registered</span><strong>{new Date(qrDoc.registeredAt).toLocaleString('en-IN')}</strong></div>
-                            <div className="sd-qr-token">Token: {qrDoc.qrToken?.slice(0, 20)}…</div>
-                        </div>
-
-                        <button className="sd-qr-download-btn" onClick={downloadQR}>⬇ Download QR PNG</button>
-                    </div>
-                </div>
-            )}
-
-            {/* ═══ PROFILE MODAL ═══ */}
-            {showProfileModal && (
-                <div className="sd-modal-overlay" onClick={() => setShowProfileModal(false)}>
-                    <div className="sd-modal sd-profile-modal" onClick={e => e.stopPropagation()}>
-                        <button className="sd-modal-close" onClick={() => setShowProfileModal(false)}>×</button>
-                        <div className="sd-profile-avatar-lg">{student.name.charAt(0)}</div>
-                        <h3 className="sd-modal-title">{student.name}</h3>
-                        <div className="sd-profile-grid">
-                            {[['Roll No', student.rollNo], ['Branch', student.branch], ['Year', student.year], ['Section', student.section], ['Semester', student.semester], ['CGPA', student.cgpa], ['Gender', student.gender], ['Nationality', student.nationality], ['Region', student.region]].map(([l, v]) => (
-                                <div className="sd-profile-field" key={l}><label>{l}</label><span style={{ textTransform: 'capitalize' }}>{v}</span></div>
-                            ))}
-                            <div className="sd-profile-field full"><label>Email</label><span>{student.email}</span></div>
-                            <div className="sd-profile-field full"><label>Phone</label><span>{student.phone}</span></div>
-                        </div>
-                        <p className="sd-profile-note">Your profile determines event eligibility. Contact admin to update.</p>
-                    </div>
-                </div>
-            )}
+                )}
+            </div>
         </div>
     );
 }

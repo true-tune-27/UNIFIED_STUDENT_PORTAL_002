@@ -1,633 +1,464 @@
-    /* ============================================================
-   Aditya University – Login Page (Split Layout)
-   Left: Login Form (65%)   |   Right: About University (35%)
-   Cloud White & Cool Blue Theme
-   ============================================================ */
+/* ════════════════════════════════════════════════════════════════
+   LOGIN PAGE — Split-Screen Premium Design
+   ════════════════════════════════════════════════════════════════ */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap');
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
 
-    :root {
-        --au-blue: #3a7bd5;
-        --au-blue-dark: #2a5faa;
-        --au-blue-light: #6ba8e8;
-        --au-cloud: #f0f5ff;
-        --au-white: #ffffff;
+/* ── Full-Screen Background ── */
+.lp-page {
+    min-height: 100vh;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Inter', sans-serif;
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+}
+
+.lp-bg-video {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    object-fit: cover;
+    transform: scale(1.35);
+    /* Scale to hide baked-in video black bars causing gaps */
+    transform-origin: center center;
+    z-index: -2;
+}
+
+.lp-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: -1;
+}
+
+/* ── Intro Overlay (Branding) ── */
+.lp-intro-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    transition: opacity 1.2s cubic-bezier(.4, 0, .2, 1), visibility 1.2s;
+}
+
+.lp-intro-overlay.hidden {
+    opacity: 0;
+    visibility: hidden;
+}
+
+.lp-intro-logo {
+    width: 120px;
+    height: 120px;
+    object-fit: contain;
+    filter: brightness(0) invert(1) drop-shadow(0 8px 24px rgba(0, 0, 0, 0.4));
+    margin-bottom: 24px;
+    animation: introFadeUp 1s cubic-bezier(.34, 1.56, .64, 1) forwards;
+}
+
+.lp-intro-title {
+    font-size: 42px;
+    font-weight: 900;
+    color: #ffffff;
+    letter-spacing: 0.08em;
+    text-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+    margin-bottom: 12px;
+    opacity: 0;
+    transform: translateY(20px);
+    animation: introFadeUp 1s cubic-bezier(.34, 1.56, .64, 1) 0.2s forwards;
+}
+
+.lp-intro-subtitle {
+    font-size: 16px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.8);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    transform: translateY(20px);
+    animation: introFadeUp 1s cubic-bezier(.34, 1.56, .64, 1) 0.4s forwards;
+}
+
+@keyframes introFadeUp {
+    to {
+        opacity: 1;
+        transform: translateY(0);
     }
+}
 
-    /* ============================================================
-   PAGE – side-by-side
-   ============================================================ */
-    .login-page {
-        display: flex;
-        width: 100vw;
-        height: 100vh;
-        overflow: hidden;
-        font-family: 'Inter', sans-serif;
-    }
+/* ── Main Card Container (Glassmorphism) ── */
+.lp-card {
+    display: flex;
+    width: 100%;
+    max-width: 440px;
+    z-index: 2;
 
-    /* ============================================================
-   LEFT PANEL – Login Form (65%)
-   ============================================================ */
-    .left-panel {
-        position: relative;
-        flex: 1 1 65%;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        background: var(--au-cloud);
-        padding: 48px;
-        overflow: hidden;
-    }
+    /* Glass Effect - High Transparency */
+    background: rgba(255, 255, 255, 0.02);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
 
-    /* Subtle decorative gradient orbs on login side */
-    .left-panel::before {
-        content: '';
-        position: absolute;
-        top: -120px;
-        left: -80px;
-        width: 350px;
-        height: 350px;
-        background: radial-gradient(circle, rgba(58, 123, 213, 0.07) 0%, transparent 70%);
-        border-radius: 50%;
-        pointer-events: none;
-        animation: floatBlob 18s ease-in-out infinite;
-    }
+    border-radius: 24px;
+    overflow: hidden;
+    box-shadow:
+        0 20px 60px rgba(0, 0, 0, 0.3),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.05);
 
-    .left-panel::after {
-        content: '';
-        position: absolute;
-        bottom: -100px;
-        right: -60px;
-        width: 300px;
-        height: 300px;
-        background: radial-gradient(circle, rgba(107, 168, 232, 0.06) 0%, transparent 70%);
-        border-radius: 50%;
-        pointer-events: none;
-        animation: floatBlob 22s ease-in-out infinite reverse;
-    }
+    /* Initialize hidden */
+    opacity: 0;
+    transform: scale(0.95) translateY(30px) perspective(1000px) rotateX(5deg);
+    pointer-events: none;
+    transition: opacity 1s cubic-bezier(.34, 1.56, .64, 1), transform 1s cubic-bezier(.34, 1.56, .64, 1);
+}
 
-    .right-content {
-        width: 100%;
-        max-width: 420px;
-        animation: fadeSlideUp 0.8s ease-out 0.2s both;
-        position: relative;
-        z-index: 1;
-    }
+.lp-card.visible {
+    opacity: 1;
+    transform: scale(1) translateY(0) perspective(1000px) rotateX(0deg);
+    pointer-events: auto;
+    transition-delay: 0.3s;
+}
 
-    .card-heading {
-        font-family: 'Outfit', sans-serif;
-        font-size: 13px;
-        font-weight: 600;
-        letter-spacing: 3px;
-        text-transform: uppercase;
-        color: var(--au-blue);
-        text-align: center;
-        margin-bottom: 4px;
-    }
+/* ══════════════════════════════════
+   LEFT PANEL — Form Side
+   ══════════════════════════════════ */
+.lp-left {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 48px 44px;
+    background: transparent;
+    position: relative;
+}
 
-    .card-subheading {
-        font-size: 22px;
-        font-weight: 700;
-        color: var(--au-blue-dark);
-        text-align: center;
-        margin-bottom: 28px;
-    }
+.lp-left-inner {
+    max-width: 360px;
+    width: 100%;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+}
 
-    .card-subheading span {
-        color: var(--au-blue);
-    }
+/* Logo */
+.lp-logo-area {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+}
 
-    /* ============================================================
-   ROLE TABS
-   ============================================================ */
-    .role-tabs {
-        position: relative;
-        display: flex;
-        background: rgba(58, 123, 213, 0.06);
-        border-radius: 16px;
-        padding: 4px;
-        margin-bottom: 26px;
-    }
+.lp-logo {
+    width: 56px;
+    height: 56px;
+    object-fit: contain;
+    filter: drop-shadow(0 4px 12px rgba(26, 35, 126, 0.15));
+    animation: logoFloat 3s ease-in-out infinite;
+}
 
-    .role-tab {
-        flex: 1;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        padding: 12px 16px;
-        border: none;
-        background: transparent;
-        border-radius: 14px;
-        font-family: 'Outfit', sans-serif;
-        font-size: 14px;
-        font-weight: 600;
-        color: #8baac4;
-        cursor: pointer;
-        position: relative;
-        z-index: 1;
-        transition: color 0.35s ease;
-    }
+@keyframes logoFloat {
 
-    .role-tab svg {
-        transition: stroke 0.35s ease;
-    }
-
-    .role-tab--active {
-        color: var(--au-blue-dark);
-    }
-
-    .role-tab--active svg {
-        stroke: var(--au-blue-dark);
-    }
-
-    .tab-indicator {
-        position: absolute;
-        top: 4px;
-        left: 4px;
-        width: calc(50% - 4px);
-        height: calc(100% - 8px);
-        background: var(--au-white);
-        border-radius: 14px;
-        box-shadow: 0 2px 12px rgba(58, 123, 213, 0.12);
-        transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        z-index: 0;
-    }
-
-    /* ============================================================
-   SLIDER
-   ============================================================ */
-    .slider-viewport {
-        overflow: hidden;
-    }
-
-    .slider-track {
-        display: flex;
-        width: 200%;
-        transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-
-    .slider-panel {
-        width: 50%;
-        flex-shrink: 0;
-    }
-
-    /* ============================================================
-   FORM
-   ============================================================ */
-    .login-form {
-        display: flex;
-        flex-direction: column;
-        gap: 20px;
-    }
-
-    .input-group {
-        display: flex;
-        flex-direction: column;
-    }
-
-    .input-group label {
-        font-size: 12px;
-        font-weight: 600;
-        letter-spacing: 0.5px;
-        text-transform: uppercase;
-        color: #8baac4;
-        margin-bottom: 8px;
-    }
-
-    .input-wrapper {
-        position: relative;
-        display: flex;
-        align-items: center;
-    }
-
-    .input-icon {
-        position: absolute;
-        left: 14px;
-        width: 18px;
-        height: 18px;
-        color: #b0c4db;
-        pointer-events: none;
-        transition: color 0.3s;
-    }
-
-    .input-wrapper input {
-        width: 100%;
-        padding: 14px 14px 14px 44px;
-        border: 2px solid rgba(58, 123, 213, 0.12);
-        border-radius: 16px;
-        font-size: 15px;
-        font-family: 'Inter', sans-serif;
-        background: var(--au-white);
-        color: #1e3a5f;
-        transition: all 0.3s ease;
-        outline: none;
-    }
-
-    .input-wrapper input:focus {
-        border-color: var(--au-blue);
-        background: #fff;
-        box-shadow: 0 0 0 4px rgba(58, 123, 213, 0.1);
-    }
-
-    .input-wrapper input:focus~.input-icon,
-    .input-wrapper input:focus+.input-icon {
-        color: var(--au-blue);
-    }
-
-    .input-wrapper input::placeholder {
-        color: #b0c4db;
-    }
-
-    .toggle-password {
-        position: absolute;
-        right: 14px;
-        background: none;
-        border: none;
-        cursor: pointer;
-        color: #b0c4db;
-        padding: 4px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: color 0.3s;
-    }
-
-    .toggle-password:hover {
-        color: var(--au-blue);
-    }
-
-    /* extras row */
-    .form-extras {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .remember-me {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 13px;
-        color: #6a8fad;
-        cursor: pointer;
-    }
-
-    .remember-me input[type='checkbox'] {
-        accent-color: var(--au-blue);
-        width: 16px;
-        height: 16px;
-        cursor: pointer;
-    }
-
-    .forgot-link {
-        font-size: 13px;
-        color: var(--au-blue);
-        text-decoration: none;
-        font-weight: 600;
-        transition: color 0.3s;
-    }
-
-    .forgot-link:hover {
-        color: var(--au-blue-dark);
-    }
-
-    /* button */
-    .login-button {
-        position: relative;
-        width: 100%;
-        padding: 15px;
-        border: none;
-        border-radius: 16px;
-        background: linear-gradient(135deg, var(--au-blue) 0%, var(--au-blue-light) 50%, var(--au-blue-dark) 100%);
-        background-size: 200% 200%;
-        color: #fff;
-        font-family: 'Outfit', sans-serif;
-        font-size: 15px;
-        font-weight: 600;
-        letter-spacing: 1.5px;
-        text-transform: uppercase;
-        cursor: pointer;
-        overflow: hidden;
-        transition: all 0.4s ease;
-        box-shadow: 0 4px 18px rgba(58, 123, 213, 0.3);
-        margin-top: 4px;
-    }
-
-    .login-button:hover {
-        background-position: 100% 100%;
-        transform: translateY(-2px);
-        box-shadow: 0 6px 28px rgba(58, 123, 213, 0.4);
-    }
-
-    .login-button:active {
+    0%,
+    100% {
         transform: translateY(0);
     }
 
-    .login-button .btn-shine {
-        position: absolute;
-        top: 0;
+    50% {
+        transform: translateY(-5px);
+    }
+}
+
+/* Heading */
+.lp-heading {
+    font-size: 28px;
+    font-weight: 800;
+    color: #ffffff;
+    text-align: center;
+    margin-bottom: 6px;
+    letter-spacing: -0.02em;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.lp-sub {
+    font-size: 14px;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.8);
+    text-align: center;
+    margin-bottom: 24px;
+}
+
+/* ── Role Tabs ── */
+.lp-tabs {
+    display: flex;
+    position: relative;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 4px;
+    margin-bottom: 24px;
+}
+
+.lp-tab {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.lp-tab.active {
+    color: #1e293b;
+}
+
+.lp-tab-indicator {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    width: calc(50% - 4px);
+    height: calc(100% - 8px);
+    background: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transition: transform 0.4s cubic-bezier(.4, 0, .2, 1);
+}
+
+/* ── Slider ── */
+.lp-slider-viewport {
+    overflow: hidden;
+}
+
+.lp-slider-track {
+    display: flex;
+    width: 200%;
+    transition: transform 0.4s cubic-bezier(.4, 0, .2, 1);
+}
+
+.lp-slider-panel {
+    width: 50%;
+    flex-shrink: 0;
+}
+
+/* ── Form Fields ── */
+.lp-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.lp-input-wrap {
+    display: flex;
+    align-items: center;
+    position: relative;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 0 16px;
+    transition: all 0.3s ease;
+}
+
+.lp-input-wrap:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.lp-input-wrap:focus-within {
+    border-color: #ffffff;
+    background: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+}
+
+.lp-input-icon {
+    display: flex;
+    align-items: center;
+    color: rgba(255, 255, 255, 0.6);
+    flex-shrink: 0;
+    margin-right: 12px;
+    transition: color 0.3s ease;
+}
+
+.lp-input-wrap:focus-within .lp-input-icon {
+    color: #ffffff;
+}
+
+.lp-input-wrap input {
+    flex: 1;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: 15px;
+    font-weight: 500;
+    color: #ffffff;
+    padding: 14px 0;
+    font-family: inherit;
+}
+
+.lp-input-wrap input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+    font-weight: 400;
+}
+
+.lp-eye-btn {
+    display: flex;
+    align-items: center;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: rgba(255, 255, 255, 0.6);
+    padding: 4px;
+    transition: color 0.2s, transform 0.2s;
+}
+
+.lp-eye-btn:hover {
+    color: #ffffff;
+    transform: scale(1.1);
+}
+
+/* ── Extras (remember / forgot) ── */
+.lp-extras {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 13px;
+    margin: 4px 0 12px;
+}
+
+.lp-remember {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+    font-weight: 500;
+    transition: color 0.2s;
+}
+
+.lp-remember:hover {
+    color: #ffffff;
+}
+
+.lp-remember input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    accent-color: #818cf8;
+    cursor: pointer;
+}
+
+.lp-forgot {
+    color: #818cf8;
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.2s, text-shadow 0.2s;
+}
+
+.lp-forgot:hover {
+    color: #ffffff;
+    text-shadow: 0 0 8px rgba(255, 255, 255, 0.4);
+}
+
+/* ── Submit Button ── */
+.lp-submit-btn {
+    width: 100%;
+    padding: 16px;
+    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+    border: none;
+    border-radius: 12px;
+    color: #ffffff;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    letter-spacing: 0.02em;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+.lp-submit-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(99, 102, 241, 0.5);
+    background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+}
+
+.lp-submit-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+}
+
+/* Shimmer */
+.lp-btn-shine {
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 60%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transform: skewX(-20deg);
+    pointer-events: none;
+}
+
+.lp-submit-btn:hover .lp-btn-shine {
+    animation: shineSweep 0.8s ease;
+}
+
+@keyframes shineSweep {
+    from {
         left: -100%;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.25), transparent);
-        animation: shine 3s ease-in-out infinite;
     }
 
-    /* footer */
-    .login-footer {
-        position: absolute;
-        bottom: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        text-align: center;
-        font-size: 12px;
-        color: #8baac4;
-        white-space: nowrap;
+    to {
+        left: 200%;
+    }
+}
+
+/* Footer */
+.lp-footer {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
+    text-align: center;
+    margin-top: 32px;
+    font-weight: 500;
+}
+
+/* ══════════════════════════════════
+   RESPONSIVE
+   ══════════════════════════════════ */
+@media (max-width: 480px) {
+    .lp-left {
+        padding: 32px 24px;
     }
 
-    /* ============================================================
-   RIGHT PANEL – About University (35%)
-   ============================================================ */
-    .right-panel {
-        position: relative;
-        flex: 0 0 35%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: linear-gradient(145deg, #2a5faa 0%, #3a7bd5 40%, #5a9be6 100%);
-        color: var(--au-white);
-        overflow: hidden;
-        padding: 40px 32px;
+    .lp-heading {
+        font-size: 24px;
     }
-
-    .left-content {
-        position: relative;
-        z-index: 1;
-        max-width: 380px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        text-align: center;
-        animation: fadeSlideUp 0.8s ease-out;
-    }
-
-    /* ── Logo area ── */
-    .logo-area {
-        margin-bottom: 28px;
-    }
-
-    .uni-logo {
-        width: 180px;
-        height: 180px;
-        object-fit: contain;
-        filter: none;
-    }
-
-    /* ── University name ── */
-    .uni-name {
-        font-family: 'Outfit', sans-serif;
-        font-size: 30px;
-        font-weight: 400;
-        letter-spacing: 3px;
-        margin: 0 0 6px;
-        color: var(--au-white);
-    }
-
-    .uni-name strong {
-        font-weight: 800;
-        color: #ffffff;
-    }
-
-    .uni-tagline {
-        font-size: 13px;
-        color: rgba(255, 255, 255, 0.65);
-        letter-spacing: 1px;
-        margin-bottom: 32px;
-    }
-
-    /* ── About section ── */
-    .uni-about {
-        margin-bottom: 32px;
-    }
-
-    .uni-about h2 {
-        font-family: 'Outfit', sans-serif;
-        font-size: 16px;
-        font-weight: 700;
-        letter-spacing: 2px;
-        text-transform: uppercase;
-        color: rgba(255, 255, 255, 0.9);
-        margin-bottom: 12px;
-    }
-
-    .uni-about p {
-        font-size: 13px;
-        line-height: 1.7;
-        color: rgba(255, 255, 255, 0.72);
-    }
-
-    /* ── Stats row ── */
-    .uni-stats {
-        display: flex;
-        gap: 24px;
-    }
-
-    .stat-item {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-    }
-
-    .stat-number {
-        font-family: 'Outfit', sans-serif;
-        font-size: 22px;
-        font-weight: 700;
-        color: #ffffff;
-    }
-
-    .stat-label {
-        font-size: 11px;
-        color: rgba(255, 255, 255, 0.55);
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        margin-top: 2px;
-    }
-
-    /* ── Decorative circles ── */
-    .left-decor-circle {
-        position: absolute;
-        border-radius: 50%;
-        border: 1.5px solid rgba(255, 255, 255, 0.08);
-        pointer-events: none;
-    }
-
-    .left-decor-1 {
-        width: 400px;
-        height: 400px;
-        top: -100px;
-        left: -120px;
-        animation: slow-pulse 12s ease-in-out infinite;
-    }
-
-    .left-decor-2 {
-        width: 300px;
-        height: 300px;
-        bottom: -60px;
-        right: -80px;
-        border-color: rgba(255, 255, 255, 0.06);
-        animation: slow-pulse 15s ease-in-out infinite 3s;
-    }
-
-    /* ── Floating blobs in the about panel ── */
-    .about-blob {
-        position: absolute;
-        border-radius: 50%;
-        pointer-events: none;
-        z-index: 0;
-    }
-
-    .about-blob-1 {
-        width: 200px;
-        height: 200px;
-        top: 10%;
-        right: -40px;
-        background: radial-gradient(circle, rgba(255, 255, 255, 0.08) 0%, transparent 70%);
-        animation: floatBlob 16s ease-in-out infinite;
-    }
-
-    .about-blob-2 {
-        width: 160px;
-        height: 160px;
-        bottom: 15%;
-        left: -30px;
-        background: radial-gradient(circle, rgba(255, 255, 255, 0.06) 0%, transparent 70%);
-        animation: floatBlob 20s ease-in-out infinite 4s;
-    }
-
-    .about-blob-3 {
-        width: 120px;
-        height: 120px;
-        top: 50%;
-        left: 30%;
-        background: radial-gradient(circle, rgba(255, 255, 255, 0.05) 0%, transparent 70%);
-        animation: floatBlob 14s ease-in-out infinite 2s;
-    }
-
-    /* ============================================================
-   KEYFRAMES
-   ============================================================ */
-    @keyframes fadeSlideUp {
-        from {
-            opacity: 0;
-            transform: translateY(28px);
-        }
-
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-
-    @keyframes shine {
-        0% {
-            left: -100%;
-        }
-
-        50%,
-        100% {
-            left: 100%;
-        }
-    }
-
-    @keyframes slow-pulse {
-
-        0%,
-        100% {
-            transform: scale(1);
-            opacity: 1;
-        }
-
-        50% {
-            transform: scale(1.08);
-            opacity: 0.6;
-        }
-    }
-
-    @keyframes floatBlob {
-
-        0%,
-        100% {
-            transform: translate(0, 0) scale(1);
-        }
-
-        33% {
-            transform: translate(12px, -18px) scale(1.04);
-        }
-
-        66% {
-            transform: translate(-8px, 8px) scale(0.97);
-        }
-    }
-
-    /* ============================================================
-   RESPONSIVE – stack on narrow screens
-   ============================================================ */
-    @media (max-width: 900px) {
-        .login-page {
-            flex-direction: column;
-        }
-
-        .right-panel {
-            flex: none;
-            padding: 32px 20px;
-        }
-
-        .left-content {
-            max-width: 100%;
-        }
-
-        .uni-name {
-            font-size: 22px;
-        }
-
-        .uni-about {
-            display: none;
-        }
-
-        .uni-stats {
-            gap: 16px;
-        }
-
-        .stat-number {
-            font-size: 18px;
-        }
-
-        .left-panel {
-            flex: 1;
-            padding: 28px 20px;
-        }
-
-        .right-content {
-            max-width: 100%;
-        }
-
-        .card-subheading {
-            font-size: 18px;
-        }
-
-        .role-tab {
-            font-size: 13px;
-            padding: 10px 10px;
-        }
-
-        .logo-area {
-            margin-bottom: 16px;
-        }
-
-        .uni-logo {
-            width: 120px;
-            height: 120px;
-        }
-    }
+}

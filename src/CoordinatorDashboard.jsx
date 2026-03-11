@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import './CoordinatorDashboard.css';
 import logoEmblem from './assets/logo.png';
 import { useAuth } from './AuthContext';
-import { getEventRegistrations, saveEventStatus } from './db';
+import { getEventRegistrations, saveEventStatus, getCustomEvents, addCustomEvent, getDeletedEvents, addDeletedEvent } from './db';
 
 /* ══════════════════════════════════════════════════════════════
    MOCK DATA – Events & Registered Students
@@ -88,7 +88,10 @@ export default function CoordinatorDashboard({ embedded = false }) {
     const { logout } = useAuth();
 
     /* ── sidebar state ── */
-    const [events, setEvents] = useState(INITIAL_EVENTS);
+    const [events, setEvents] = useState(() => {
+        const deleted = getDeletedEvents();
+        return [...INITIAL_EVENTS, ...getCustomEvents()].filter(e => !deleted.includes(e.id));
+    });
     const [selectedEventId, setSelectedEventId] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [openYears, setOpenYears] = useState({ '2026': true });
@@ -303,6 +306,7 @@ export default function CoordinatorDashboard({ embedded = false }) {
 
     /* ── delete event ── */
     const handleDeleteEvent = (id) => {
+        addDeletedEvent(id);
         setEvents(prev => prev.filter(e => e.id !== id));
         if (selectedEventId === id) setSelectedEventId(null);
         setDeleteConfirmId(null);
@@ -524,11 +528,22 @@ export default function CoordinatorDashboard({ embedded = false }) {
             venue: newEvVenue, club: newEvClub, coordinator: newEvCoordinator,
             description: newEvDescription, facultyName: newEvCoordinator || 'Dr. T. Neelima',
             registrationOpen: true, students: [],
+            criteria: {
+                gender: draftGender,
+                years: draftYears,
+                branches: draftBranches,
+                nationalities: draftNationalities,
+                regions: draftRegions,
+                isPaid: draftIsPaid,
+                fee: draftIsPaid ? Number(draftFee) : 0,
+            }
         };
+        addCustomEvent(newEv);
         setEvents(prev => [...prev, newEv]);
         setShowNewEventModal(false);
         setNewEvName(''); setNewEvDate(''); setNewEvVenue('KL Rao Bhavan');
         setNewEvClub(''); setNewEvCoordinator(''); setNewEvDescription('');
+        setDraftGender('all'); setDraftYears([]); setDraftBranches([]); setDraftNationalities([]); setDraftRegions([]); setDraftIsPaid(false); setDraftFee(0); setDraftNatInput(''); setDraftRegInput('');
     };
 
     /* ── modify event handler ── */
@@ -662,6 +677,140 @@ export default function CoordinatorDashboard({ embedded = false }) {
         </aside>
     );
 
+    const renderCriteriaFields = () => (
+        <div className="cd-criteria-grid">
+            {/* ── GENDER ── */}
+            <div className="cd-criteria-section">
+                <p className="cd-criteria-section-label">👤 Gender Restriction</p>
+                <div className="cd-criteria-gender-group">
+                    {[{ v: 'all', label: '🌐 All', color: '#6366f1' }, { v: 'male', label: '♂ Boys Only', color: '#2196f3' }, { v: 'female', label: '♀ Girls Only', color: '#e91e63' }].map(o => (
+                        <button
+                            key={o.v}
+                            className={`cd-criteria-gender-btn ${draftGender === o.v ? 'active' : ''}`}
+                            style={draftGender === o.v ? { background: o.color, color: '#fff', borderColor: o.color } : {}}
+                            onClick={() => setDraftGender(o.v)}
+                        >{o.label}</button>
+                    ))}
+                </div>
+            </div>
+
+            {/* ── YEAR ── */}
+            <div className="cd-criteria-section">
+                <p className="cd-criteria-section-label">🎓 Year of Study <span className="cd-criteria-hint">(none = all years)</span></p>
+                <div className="cd-criteria-checkbox-grid">
+                    {YEARS.map(yr => (
+                        <label key={yr} className={`cd-criteria-chip-check ${draftYears.includes(yr) ? 'active' : ''}`}>
+                            <input type="checkbox" checked={draftYears.includes(yr)} onChange={() => toggleDraftYear(yr)} />
+                            {yr} Year
+                        </label>
+                    ))}
+                </div>
+            </div>
+
+            {/* ── BRANCH ── */}
+            <div className="cd-criteria-section cd-criteria-section-wide">
+                <p className="cd-criteria-section-label">🏷️ Branch / Department <span className="cd-criteria-hint">(none = all branches)</span></p>
+                <div className="cd-criteria-checkbox-grid cd-criteria-branch-grid">
+                    {BRANCHES.map(br => (
+                        <label key={br} className={`cd-criteria-chip-check ${draftBranches.includes(br) ? 'active' : ''}`}>
+                            <input type="checkbox" checked={draftBranches.includes(br)} onChange={() => toggleDraftBranch(br)} />
+                            {br}
+                        </label>
+                    ))}
+                </div>
+            </div>
+
+            {/* ── NATIONALITY ── */}
+            <div className="cd-criteria-section">
+                <p className="cd-criteria-section-label">🌍 Nationality <span className="cd-criteria-hint">(none = open to all)</span></p>
+                <div className="cd-criteria-tag-row">
+                    <input
+                        className="cd-criteria-tag-input"
+                        placeholder="e.g. Indian, Nepali…"
+                        value={draftNatInput}
+                        onChange={e => setDraftNatInput(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && addNatTag()}
+                    />
+                    <button className="cd-criteria-add-btn" onClick={addNatTag}>+</button>
+                </div>
+                <div className="cd-criteria-tags">
+                    {draftNationalities.map(n => (
+                        <span key={n} className="cd-criteria-tag cd-criteria-tag-nat">
+                            {n}
+                            <button onClick={() => setDraftNationalities(prev => prev.filter(x => x !== n))}>×</button>
+                        </span>
+                    ))}
+                </div>
+            </div>
+
+            {/* ── REGION / STATE ── */}
+            <div className="cd-criteria-section">
+                <p className="cd-criteria-section-label">📍 Region / State <span className="cd-criteria-hint">(none = all regions)</span></p>
+                <div className="cd-criteria-tag-row">
+                    <input
+                        className="cd-criteria-tag-input"
+                        placeholder="e.g. Kerala, Andhra Pradesh…"
+                        value={draftRegInput}
+                        onChange={e => setDraftRegInput(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && addRegTag()}
+                    />
+                    <button className="cd-criteria-add-btn" onClick={addRegTag}>+</button>
+                </div>
+                <div className="cd-criteria-tags">
+                    {draftRegions.map(r => (
+                        <span key={r} className="cd-criteria-tag cd-criteria-tag-reg">
+                            {r}
+                            <button onClick={() => setDraftRegions(prev => prev.filter(x => x !== r))}>×</button>
+                        </span>
+                    ))}
+                </div>
+            </div>
+
+            {/* ── PAID / FREE ── */}
+            <div className="cd-criteria-section">
+                <p className="cd-criteria-section-label">💳 Entry Type</p>
+                <div className="cd-criteria-paid-row">
+                    <button
+                        className={`cd-criteria-paid-btn ${!draftIsPaid ? 'active free' : ''}`}
+                        onClick={() => setDraftIsPaid(false)}
+                    >🆓 Free</button>
+                    <button
+                        className={`cd-criteria-paid-btn ${draftIsPaid ? 'active paid' : ''}`}
+                        onClick={() => setDraftIsPaid(true)}
+                    >💰 Paid</button>
+                </div>
+                {draftIsPaid && (
+                    <div className="cd-criteria-fee-row">
+                        <span className="cd-criteria-fee-symbol">₹</span>
+                        <input
+                            type="number"
+                            className="cd-criteria-fee-input"
+                            placeholder="Enter fee amount"
+                            value={draftFee}
+                            min={0}
+                            onChange={e => setDraftFee(e.target.value)}
+                        />
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+
+    const renderCriteriaSummary = () => (
+        <div className="cd-criteria-summary">
+            <span className="cd-criteria-summary-label">Preview:</span>
+            {draftGender !== 'all' && <span className="cd-cbadge cd-cbadge-gender">{draftGender === 'male' ? '♂ Boys Only' : '♀ Girls Only'}</span>}
+            {draftYears.length > 0 && <span className="cd-cbadge cd-cbadge-year">🎓 {draftYears.join(', ')}</span>}
+            {draftBranches.length > 0 && <span className="cd-cbadge cd-cbadge-branch">🏷️ {draftBranches.join(', ')}</span>}
+            {draftNationalities.length > 0 && <span className="cd-cbadge cd-cbadge-nat">🌍 {draftNationalities.join(', ')}</span>}
+            {draftRegions.length > 0 && <span className="cd-cbadge cd-cbadge-reg">📍 {draftRegions.join(', ')}</span>}
+            {draftIsPaid && <span className="cd-cbadge cd-cbadge-paid">💰 ₹{draftFee}</span>}
+            {draftGender === 'all' && draftYears.length === 0 && draftBranches.length === 0 && draftNationalities.length === 0 && draftRegions.length === 0 && !draftIsPaid && (
+                <span className="cd-cbadge cd-cbadge-open">🌐 Open to All</span>
+            )}
+        </div>
+    );
+
     const modalsJSX = (
         <>
             {editingEventId && (
@@ -721,7 +870,11 @@ export default function CoordinatorDashboard({ embedded = false }) {
                                 <span className="cd-upload-card-icon" style={{ color: '#2e7d32' }}>📊</span>
                                 <span>Upload Excel Sheet</span>
                             </button>
-                            <button className="cd-upload-card" onClick={() => { setShowUploadModal(false); setShowNewEventModal(true); }}>
+                            <button className="cd-upload-card" onClick={() => {
+                                setShowUploadModal(false);
+                                setDraftGender('all'); setDraftYears([]); setDraftBranches([]); setDraftNationalities([]); setDraftRegions([]); setDraftIsPaid(false); setDraftFee(0); setDraftNatInput(''); setDraftRegInput('');
+                                setShowNewEventModal(true);
+                            }}>
                                 <span className="cd-upload-card-icon" style={{ color: '#f57c00' }}>📋</span>
                                 <span>Upload New Event</span>
                             </button>
@@ -732,24 +885,36 @@ export default function CoordinatorDashboard({ embedded = false }) {
             {/* New Event Modal */}
             {showNewEventModal && (
                 <div className="cd-modal-overlay" onClick={() => setShowNewEventModal(false)}>
-                    <div className="cd-modal" onClick={e => e.stopPropagation()}>
+                    <div className="cd-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '800px', width: '90vw' }}>
                         <button className="cd-modal-close" onClick={() => setShowNewEventModal(false)}>×</button>
                         <h3 className="cd-modal-title">Upload New Event</h3>
-                        <div className="cd-modal-body">
-                            <label>Event Name</label>
-                            <input placeholder="e.g. AI Hackathon" value={newEvName} onChange={e => setNewEvName(e.target.value)} />
-                            <label>Date</label>
-                            <input type="date" value={newEvDate} onChange={e => setNewEvDate(e.target.value)} />
-                            <label>Venue</label>
-                            <select value={newEvVenue} onChange={e => setNewEvVenue(e.target.value)} className="cd-modal-select">
-                                {VENUES.map(v => <option key={v} value={v}>{v}</option>)}
-                            </select>
-                            <label>Club / Department</label>
-                            <input placeholder="e.g. Eco Club" value={newEvClub} onChange={e => setNewEvClub(e.target.value)} />
-                            <label>Coordinator</label>
-                            <input placeholder="e.g. Dr. Smith" value={newEvCoordinator} onChange={e => setNewEvCoordinator(e.target.value)} />
-                            <label>Description</label>
-                            <textarea placeholder="Brief event details..." value={newEvDescription} onChange={e => setNewEvDescription(e.target.value)} className="cd-modal-textarea" />
+                        <div className="cd-modal-body" style={{ maxHeight: '70vh', overflowY: 'auto', paddingRight: '10px' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                    <label>Event Name</label>
+                                    <input placeholder="e.g. AI Hackathon" value={newEvName} onChange={e => setNewEvName(e.target.value)} />
+                                    <label>Date</label>
+                                    <input type="date" value={newEvDate} onChange={e => setNewEvDate(e.target.value)} />
+                                    <label>Venue</label>
+                                    <select value={newEvVenue} onChange={e => setNewEvVenue(e.target.value)} className="cd-modal-select">
+                                        {VENUES.map(v => <option key={v} value={v}>{v}</option>)}
+                                    </select>
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                    <label>Club / Department</label>
+                                    <input placeholder="e.g. Eco Club" value={newEvClub} onChange={e => setNewEvClub(e.target.value)} />
+                                    <label>Coordinator</label>
+                                    <input placeholder="e.g. Dr. Smith" value={newEvCoordinator} onChange={e => setNewEvCoordinator(e.target.value)} />
+                                    <label>Description</label>
+                                    <textarea placeholder="Brief event details..." value={newEvDescription} onChange={e => setNewEvDescription(e.target.value)} className="cd-modal-textarea" style={{ minHeight: '104px' }} />
+                                </div>
+                            </div>
+
+                            <hr style={{ margin: '20px 0', border: 'none', borderTop: '1px solid #e2e8f0' }} />
+                            <h4 style={{ marginBottom: '10px', color: '#1e293b' }}>Registration Criteria</h4>
+                            {renderCriteriaFields()}
+                            {renderCriteriaSummary()}
+
                         </div>
                         <button className="cd-modal-full-btn" onClick={handleAddNewEvent}>Add Event</button>
                     </div>
@@ -844,138 +1009,8 @@ export default function CoordinatorDashboard({ embedded = false }) {
                             </div>
                         </div>
 
-                        <div className="cd-criteria-grid">
-
-                            {/* ── GENDER ── */}
-                            <div className="cd-criteria-section">
-                                <p className="cd-criteria-section-label">👤 Gender Restriction</p>
-                                <div className="cd-criteria-gender-group">
-                                    {[{ v: 'all', label: '🌐 All', color: '#6366f1' }, { v: 'male', label: '♂ Boys Only', color: '#2196f3' }, { v: 'female', label: '♀ Girls Only', color: '#e91e63' }].map(o => (
-                                        <button
-                                            key={o.v}
-                                            className={`cd-criteria-gender-btn ${draftGender === o.v ? 'active' : ''}`}
-                                            style={draftGender === o.v ? { background: o.color, color: '#fff', borderColor: o.color } : {}}
-                                            onClick={() => setDraftGender(o.v)}
-                                        >{o.label}</button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* ── YEAR ── */}
-                            <div className="cd-criteria-section">
-                                <p className="cd-criteria-section-label">🎓 Year of Study <span className="cd-criteria-hint">(none = all years)</span></p>
-                                <div className="cd-criteria-checkbox-grid">
-                                    {YEARS.map(yr => (
-                                        <label key={yr} className={`cd-criteria-chip-check ${draftYears.includes(yr) ? 'active' : ''}`}>
-                                            <input type="checkbox" checked={draftYears.includes(yr)} onChange={() => toggleDraftYear(yr)} />
-                                            {yr} Year
-                                        </label>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* ── BRANCH ── */}
-                            <div className="cd-criteria-section cd-criteria-section-wide">
-                                <p className="cd-criteria-section-label">🏷️ Branch / Department <span className="cd-criteria-hint">(none = all branches)</span></p>
-                                <div className="cd-criteria-checkbox-grid cd-criteria-branch-grid">
-                                    {BRANCHES.map(br => (
-                                        <label key={br} className={`cd-criteria-chip-check ${draftBranches.includes(br) ? 'active' : ''}`}>
-                                            <input type="checkbox" checked={draftBranches.includes(br)} onChange={() => toggleDraftBranch(br)} />
-                                            {br}
-                                        </label>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* ── NATIONALITY ── */}
-                            <div className="cd-criteria-section">
-                                <p className="cd-criteria-section-label">🌍 Nationality <span className="cd-criteria-hint">(none = open to all)</span></p>
-                                <div className="cd-criteria-tag-row">
-                                    <input
-                                        className="cd-criteria-tag-input"
-                                        placeholder="e.g. Indian, Nepali…"
-                                        value={draftNatInput}
-                                        onChange={e => setDraftNatInput(e.target.value)}
-                                        onKeyDown={e => e.key === 'Enter' && addNatTag()}
-                                    />
-                                    <button className="cd-criteria-add-btn" onClick={addNatTag}>+</button>
-                                </div>
-                                <div className="cd-criteria-tags">
-                                    {draftNationalities.map(n => (
-                                        <span key={n} className="cd-criteria-tag cd-criteria-tag-nat">
-                                            {n}
-                                            <button onClick={() => setDraftNationalities(prev => prev.filter(x => x !== n))}>×</button>
-                                        </span>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* ── REGION / STATE ── */}
-                            <div className="cd-criteria-section">
-                                <p className="cd-criteria-section-label">📍 Region / State <span className="cd-criteria-hint">(none = all regions)</span></p>
-                                <div className="cd-criteria-tag-row">
-                                    <input
-                                        className="cd-criteria-tag-input"
-                                        placeholder="e.g. Kerala, Andhra Pradesh…"
-                                        value={draftRegInput}
-                                        onChange={e => setDraftRegInput(e.target.value)}
-                                        onKeyDown={e => e.key === 'Enter' && addRegTag()}
-                                    />
-                                    <button className="cd-criteria-add-btn" onClick={addRegTag}>+</button>
-                                </div>
-                                <div className="cd-criteria-tags">
-                                    {draftRegions.map(r => (
-                                        <span key={r} className="cd-criteria-tag cd-criteria-tag-reg">
-                                            {r}
-                                            <button onClick={() => setDraftRegions(prev => prev.filter(x => x !== r))}>×</button>
-                                        </span>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* ── PAID / FREE ── */}
-                            <div className="cd-criteria-section">
-                                <p className="cd-criteria-section-label">💳 Entry Type</p>
-                                <div className="cd-criteria-paid-row">
-                                    <button
-                                        className={`cd-criteria-paid-btn ${!draftIsPaid ? 'active free' : ''}`}
-                                        onClick={() => setDraftIsPaid(false)}
-                                    >🆓 Free</button>
-                                    <button
-                                        className={`cd-criteria-paid-btn ${draftIsPaid ? 'active paid' : ''}`}
-                                        onClick={() => setDraftIsPaid(true)}
-                                    >💰 Paid</button>
-                                </div>
-                                {draftIsPaid && (
-                                    <div className="cd-criteria-fee-row">
-                                        <span className="cd-criteria-fee-symbol">₹</span>
-                                        <input
-                                            type="number"
-                                            className="cd-criteria-fee-input"
-                                            placeholder="Enter fee amount"
-                                            value={draftFee}
-                                            min={0}
-                                            onChange={e => setDraftFee(e.target.value)}
-                                        />
-                                    </div>
-                                )}
-                            </div>
-
-                        </div>{/* end grid */}
-
-                        {/* ── SUMMARY PREVIEW ── */}
-                        <div className="cd-criteria-summary">
-                            <span className="cd-criteria-summary-label">Preview:</span>
-                            {draftGender !== 'all' && <span className="cd-cbadge cd-cbadge-gender">{draftGender === 'male' ? '♂ Boys Only' : '♀ Girls Only'}</span>}
-                            {draftYears.length > 0 && <span className="cd-cbadge cd-cbadge-year">🎓 {draftYears.join(', ')}</span>}
-                            {draftBranches.length > 0 && <span className="cd-cbadge cd-cbadge-branch">🏷️ {draftBranches.join(', ')}</span>}
-                            {draftNationalities.length > 0 && <span className="cd-cbadge cd-cbadge-nat">🌍 {draftNationalities.join(', ')}</span>}
-                            {draftRegions.length > 0 && <span className="cd-cbadge cd-cbadge-reg">📍 {draftRegions.join(', ')}</span>}
-                            {draftIsPaid && <span className="cd-cbadge cd-cbadge-paid">💰 ₹{draftFee}</span>}
-                            {draftGender === 'all' && draftYears.length === 0 && draftBranches.length === 0 && draftNationalities.length === 0 && draftRegions.length === 0 && !draftIsPaid && (
-                                <span className="cd-cbadge cd-cbadge-open">🌐 Open to All</span>
-                            )}
-                        </div>
+                        {renderCriteriaFields()}
+                        {renderCriteriaSummary()}
 
                         <button className="cd-criteria-save-btn" onClick={handleSaveCriteria}>
                             ✅ Save & Open Registration

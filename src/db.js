@@ -111,3 +111,46 @@ export function saveEventStatus(eventId, patch) {
     // notify other tabs
     window.dispatchEvent(new StorageEvent('storage', { key: LS_EVENT_KEY }));
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   CUSTOM EVENTS
+   Coordinators create events here; Student Dashboard reads.
+   ═══════════════════════════════════════════════════════════════ */
+const LS_CUSTOM_EVENTS_KEY = 'aditya_custom_events_v1';
+
+export function getCustomEvents() {
+    try {
+        const raw = localStorage.getItem(LS_CUSTOM_EVENTS_KEY);
+        return raw ? JSON.parse(raw) : [];
+    } catch { return []; }
+}
+
+export function addCustomEvent(event) {
+    const all = getCustomEvents();
+    all.push(event);
+    try { localStorage.setItem(LS_CUSTOM_EVENTS_KEY, JSON.stringify(all)); } catch { }
+    // notify other tabs
+    window.dispatchEvent(new StorageEvent('storage', { key: LS_CUSTOM_EVENTS_KEY }));
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   DELETED EVENTS
+   Coordinators delete events here; Student Dashboard hides them.
+   ═══════════════════════════════════════════════════════════════ */
+const LS_DELETED_EVENTS_KEY = 'aditya_deleted_events_v1';
+
+export function getDeletedEvents() {
+    try {
+        const raw = localStorage.getItem(LS_DELETED_EVENTS_KEY);
+        return raw ? JSON.parse(raw) : [];
+    } catch { return []; }
+}
+
+export function addDeletedEvent(eventId) {
+    const all = getDeletedEvents();
+    if (!all.includes(eventId)) {
+        all.push(eventId);
+        try { localStorage.setItem(LS_DELETED_EVENTS_KEY, JSON.stringify(all)); } catch { }
+        window.dispatchEvent(new StorageEvent('storage', { key: LS_DELETED_EVENTS_KEY }));
+    }
+}
