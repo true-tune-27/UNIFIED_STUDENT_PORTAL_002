@@ -77,6 +77,16 @@
     gap: 3px;
     padding: 18px 12px;
     flex: 1;
+    overflow-y: auto;
+}
+
+.fd-nav::-webkit-scrollbar {
+    width: 4px;
+}
+
+.fd-nav::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
 }
 
 .fd-nav-item {

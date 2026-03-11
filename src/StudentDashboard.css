@@ -158,6 +158,16 @@
     gap: 4px;
     padding: 8px 10px;
     flex: 1;
+    overflow-y: auto;
+}
+
+.sd-nav::-webkit-scrollbar {
+    width: 4px;
+}
+
+.sd-nav::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
 }
 
 .sd-nav-item {
