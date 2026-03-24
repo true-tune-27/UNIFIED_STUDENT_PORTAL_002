@@ -1,9 +1,10 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { Html5Qrcode } from 'html5-qrcode';
 import './CoordinatorDashboard.css';
 import logoEmblem from './assets/logo.png';
 import { useAuth } from './AuthContext';
-import { getEventRegistrations, saveEventStatus, getCustomEvents, addCustomEvent, getDeletedEvents, addDeletedEvent } from './db';
+import { getEventRegistrations, saveEventStatus, getCustomEvents, addCustomEvent, getDeletedEvents, addDeletedEvent, getAttendance, markAttendance, removeAttendance, getAttendanceMap } from './db';
 
 /* ══════════════════════════════════════════════════════════════
    MOCK DATA – Events & Registered Students
@@ -75,6 +76,7 @@ const ALL_COLUMNS = [
     { key: 'phone', label: 'Phone', sortable: false },
     { key: 'email', label: 'Email', sortable: true },
     { key: 'registeredDate', label: 'Reg. Date', sortable: true },
+    { key: 'attended', label: 'Attended', sortable: false },
     { key: 'isWinner', label: 'Winner?', sortable: false },
 ];
 
@@ -169,6 +171,214 @@ export default function CoordinatorDashboard({ embedded = false }) {
     const [showNewEventModal, setShowNewEventModal] = useState(false);
     const [showModifyModal, setShowModifyModal] = useState(false);
     const [showCertificateModal, setShowCertificateModal] = useState(false);
+
+    /* ── QR Scanner state ── */
+    const [scanResult, setScanResult] = useState(null);
+    const [scannerRunning, setScannerRunning] = useState(false);
+    const [scanToast, setScanToast] = useState(null);
+    const [scanEventId, setScanEventId] = useState(null); // coordinator picks event first
+    const scannerRef = useRef(null);
+    const scannerDivId = 'cd-qr-reader';
+
+    /* ── Attendance state ── */
+    const [attendanceMap, setAttendanceMap] = useState(() => getAttendanceMap());
+
+    useEffect(() => {
+        const refreshAttendance = () => setAttendanceMap(getAttendanceMap());
+        window.addEventListener('storage', refreshAttendance);
+        const timer = setInterval(refreshAttendance, 2000);
+        return () => { window.removeEventListener('storage', refreshAttendance); clearInterval(timer); };
+    }, []);
+
+    /* ── Process scanned/looked-up data ── */
+    const processScanData = useCallback((data) => {
+        // load student photo from localStorage
+        let photo = '';
+        try { photo = localStorage.getItem(`aditya_student_photo_${data.rollNo}`) || ''; } catch { }
+
+        // Check if student is registered for the selected event
+        const allRegs = JSON.parse(localStorage.getItem('aditya_event_registrations_v1') || '[]');
+        const regMatch = allRegs.find(r =>
+            r.rollNo?.toLowerCase() === data.rollNo?.toLowerCase() &&
+            r.eventId === scanEventId
+        );
+
+        // Check if already marked present (duplicate)
+        const currentAttendance = getAttendanceMap();
+        const alreadyPresent = (currentAttendance[scanEventId] || []).includes(data.rollNo);
+
+        setScanResult({
+            ...data,
+            photo,
+            isRegistered: !!regMatch,
+            isDuplicate: alreadyPresent,
+            regDetails: regMatch || null,
+        });
+    }, [scanEventId]);
+
+    /* ── Start QR scanner ── */
+    const startScanner = useCallback(async () => {
+        if (scannerRef.current) return;
+        if (!scanEventId) {
+            setScanToast('⚠️ Please select an event first');
+            setTimeout(() => setScanToast(null), 3000);
+            return;
+        }
+        setScanResult(null);
+        const html5QrCode = new Html5Qrcode(scannerDivId);
+        scannerRef.current = html5QrCode;
+        try {
+            await html5QrCode.start(
+                { facingMode: 'environment' },
+                { fps: 10, qrbox: { width: 250, height: 250 } },
+                (decodedText) => {
+                    try {
+                        const data = JSON.parse(decodedText);
+                        processScanData(data);
+                        html5QrCode.stop().then(() => {
+                            scannerRef.current = null;
+                            setScannerRunning(false);
+                        }).catch(() => {});
+                    } catch {
+                        setScanResult({ error: true, raw: decodedText });
+                    }
+                },
+                () => { /* ignore scan failures */ }
+            );
+            setScannerRunning(true);
+        } catch (err) {
+            console.error('Scanner start error:', err);
+            scannerRef.current = null;
+        }
+    }, [scanEventId, processScanData]);
+
+    /* ── Stop QR scanner ── */
+    const stopScanner = useCallback(async () => {
+        if (scannerRef.current) {
+            try { await scannerRef.current.stop(); } catch { }
+            scannerRef.current = null;
+            setScannerRunning(false);
+        }
+    }, []);
+
+    /* ── Cleanup on unmount ── */
+    useEffect(() => {
+        return () => {
+            if (scannerRef.current) {
+                scannerRef.current.stop().catch(() => {});
+                scannerRef.current = null;
+            }
+        };
+    }, []);
+
+    /* ── Handle mark attendance ── */
+    const handleMarkAttendance = useCallback((eventId, rollNo) => {
+        markAttendance(eventId, rollNo);
+        setAttendanceMap(getAttendanceMap());
+        setScanResult(prev => prev ? { ...prev, isDuplicate: true } : prev);
+        setScanToast(`✅ ${rollNo} marked PRESENT`);
+        setTimeout(() => setScanToast(null), 3000);
+    }, []);
+
+    /* ── Manual roll / token lookup ── */
+    const [manualInput, setManualInput] = useState('');
+    const [scanMode, setScanMode] = useState('webcam'); // 'webcam' | 'device' | 'manual'
+    const [deviceInput, setDeviceInput] = useState('');
+    const deviceInputRef = useRef(null);
+    const handleManualLookup = useCallback(() => {
+        const query = manualInput.trim();
+        if (!query) return;
+        if (!scanEventId) {
+            setScanToast('⚠️ Please select an event first');
+            setTimeout(() => setScanToast(null), 3000);
+            return;
+        }
+        try {
+            const allRegs = JSON.parse(localStorage.getItem('aditya_event_registrations_v1') || '[]');
+            // Search by rollNo or token in the selected event
+            const match = allRegs.find(r =>
+                r.eventId === scanEventId &&
+                (r.rollNo?.toLowerCase() === query.toLowerCase() ||
+                 r.qrToken?.toLowerCase().startsWith(query.toLowerCase()))
+            );
+            if (match) {
+                processScanData({
+                    student: match.studentName,
+                    rollNo: match.rollNo,
+                    eventId: match.eventId,
+                    event: match.eventName || events.find(e => e.id === match.eventId)?.name || '',
+                    date: match.eventDate || events.find(e => e.id === match.eventId)?.date || '',
+                    venue: match.venue || events.find(e => e.id === match.eventId)?.venue || '',
+                    registeredAt: match.registeredAt,
+                    token: match.qrToken,
+                });
+                setManualInput('');
+            } else {
+                // Maybe not registered for this event? Check globally
+                const globalMatch = allRegs.find(r =>
+                    r.rollNo?.toLowerCase() === query.toLowerCase() ||
+                    r.qrToken?.toLowerCase().startsWith(query.toLowerCase())
+                );
+                if (globalMatch) {
+                    const evName = events.find(e => e.id === scanEventId)?.name || 'selected event';
+                    setScanToast(`⚠️ ${globalMatch.rollNo} is NOT registered for ${evName}`);
+                } else {
+                    setScanToast(`❌ No registration found for "${query}"`);
+                }
+                setTimeout(() => setScanToast(null), 4000);
+            }
+        } catch {
+            setScanToast('❌ Error reading registrations');
+            setTimeout(() => setScanToast(null), 3000);
+        }
+    }, [manualInput, scanEventId, events, processScanData]);
+
+    /* ── Handle external QR scanner device input ── */
+    const handleDeviceScan = useCallback((rawInput) => {
+        const text = rawInput.trim();
+        if (!text) return;
+        if (!scanEventId) {
+            setScanToast('⚠️ Please select an event first');
+            setTimeout(() => setScanToast(null), 3000);
+            return;
+        }
+        try {
+            // External scanners output the QR JSON string
+            const data = JSON.parse(text);
+            processScanData(data);
+        } catch {
+            // If not JSON, treat as roll number lookup
+            setManualInput(text);
+            // Trigger manual lookup logic inline
+            try {
+                const allRegs = JSON.parse(localStorage.getItem('aditya_event_registrations_v1') || '[]');
+                const match = allRegs.find(r =>
+                    r.eventId === scanEventId &&
+                    (r.rollNo?.toLowerCase() === text.toLowerCase() ||
+                     r.qrToken?.toLowerCase().startsWith(text.toLowerCase()))
+                );
+                if (match) {
+                    processScanData({
+                        student: match.studentName,
+                        rollNo: match.rollNo,
+                        eventId: match.eventId,
+                        event: match.eventName || events.find(e => e.id === match.eventId)?.name || '',
+                        date: match.eventDate || events.find(e => e.id === match.eventId)?.date || '',
+                        venue: match.venue || events.find(e => e.id === match.eventId)?.venue || '',
+                        registeredAt: match.registeredAt,
+                        token: match.qrToken,
+                    });
+                } else {
+                    setScanToast(`❌ No registration found for "${text}"`);
+                    setTimeout(() => setScanToast(null), 3000);
+                }
+            } catch {
+                setScanToast('❌ Error reading scan data');
+                setTimeout(() => setScanToast(null), 3000);
+            }
+        }
+        setDeviceInput('');
+    }, [scanEventId, events, processScanData]);
 
     /* ── registration criteria modal state ── */
     const [showCriteriaModal, setShowCriteriaModal] = useState(false);
@@ -595,14 +805,17 @@ export default function CoordinatorDashboard({ embedded = false }) {
             {/* dropdown items */}
             {eventsDropdownOpen && (
                 <div className="cd-dropdown-items">
-                    <button className={`cd-dropdown-item ${activeSection === 'upcoming' ? 'active' : ''}`} onClick={() => setActiveSection('upcoming')}>
+                    <button className={`cd-dropdown-item ${activeSection === 'upcoming' ? 'active' : ''}`} onClick={() => { setActiveSection('upcoming'); stopScanner(); }}>
                         <span className="cd-dropdown-item-icon">🔔</span> Upcoming Events
                     </button>
-                    <button className={`cd-dropdown-item ${activeSection === 'calendar' ? 'active' : ''}`} onClick={() => setActiveSection('calendar')}>
+                    <button className={`cd-dropdown-item ${activeSection === 'calendar' ? 'active' : ''}`} onClick={() => { setActiveSection('calendar'); stopScanner(); }}>
                         <span className="cd-dropdown-item-icon">📅</span> Event Calendar
                     </button>
-                    <button className={`cd-dropdown-item ${activeSection === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveSection('dashboard')}>
+                    <button className={`cd-dropdown-item ${activeSection === 'dashboard' ? 'active' : ''}`} onClick={() => { setActiveSection('dashboard'); stopScanner(); }}>
                         <span className="cd-dropdown-item-icon">📊</span> Events Dashboard
+                    </button>
+                    <button className={`cd-dropdown-item ${activeSection === 'scanQr' ? 'active' : ''}`} onClick={() => { setActiveSection('scanQr'); setScanResult(null); }}>
+                        <span className="cd-dropdown-item-icon">📷</span> Scan QR / Attendance
                     </button>
                 </div>
             )}
@@ -956,46 +1169,59 @@ export default function CoordinatorDashboard({ embedded = false }) {
                 </div>
             )}
             {/* Certificate Generation Modal */}
-            {showCertificateModal && selectedEvent && (
-                <div className="cd-modal-overlay" onClick={() => setShowCertificateModal(false)}>
-                    <div className="cd-modal" onClick={e => e.stopPropagation()}>
-                        <button className="cd-modal-close" onClick={() => setShowCertificateModal(false)}>×</button>
-                        <h3 className="cd-modal-title">Generate Certificates</h3>
-                        <div className="cd-modal-body" style={{ textAlign: 'center' }}>
-                            <div style={{ fontSize: '48px', marginBottom: '16px' }}>🎓</div>
-                            <p style={{ fontSize: '16px', color: '#1e3a5f', marginBottom: '8px' }}>
-                                Generating certificates for <strong>{selectedEvent.name}</strong>
-                            </p>
-                            <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', margin: '20px 0' }}>
-                                <div style={{ background: '#e8f5e9', padding: '15px 25px', borderRadius: '12px', border: '1px solid #c8e6c9' }}>
-                                    <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#2e7d32' }}>
-                                        {selectedEvent.students.filter(s => s.isWinner).length}
+            {showCertificateModal && selectedEvent && (() => {
+                const evAttendance = attendanceMap[selectedEvent.id] || [];
+                const presentStudents = selectedEvent.students.filter(s => evAttendance.includes(s.rollNo));
+                const absentStudents = selectedEvent.students.filter(s => !evAttendance.includes(s.rollNo));
+                const presentWinners = presentStudents.filter(s => s.isWinner);
+                const presentParticipants = presentStudents.filter(s => !s.isWinner);
+                return (
+                    <div className="cd-modal-overlay" onClick={() => setShowCertificateModal(false)}>
+                        <div className="cd-modal" onClick={e => e.stopPropagation()}>
+                            <button className="cd-modal-close" onClick={() => setShowCertificateModal(false)}>×</button>
+                            <h3 className="cd-modal-title">Generate Certificates</h3>
+                            <div className="cd-modal-body" style={{ textAlign: 'center' }}>
+                                <div style={{ fontSize: '48px', marginBottom: '16px' }}>🎓</div>
+                                <p style={{ fontSize: '16px', color: '#1e3a5f', marginBottom: '8px' }}>
+                                    Certificates for <strong>{selectedEvent.name}</strong>
+                                </p>
+                                <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '16px' }}>
+                                    Only students marked <strong>Present</strong> are eligible for certificates.
+                                </p>
+                                <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', margin: '20px 0', flexWrap: 'wrap' }}>
+                                    <div style={{ background: '#e8f5e9', padding: '15px 22px', borderRadius: '12px', border: '1px solid #c8e6c9' }}>
+                                        <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#2e7d32' }}>{presentWinners.length}</div>
+                                        <div style={{ fontSize: '12px', color: '#388e3c' }}>Winners (Present)</div>
                                     </div>
-                                    <div style={{ fontSize: '13px', color: '#388e3c' }}>Winners</div>
-                                </div>
-                                <div style={{ background: '#e3f2fd', padding: '15px 25px', borderRadius: '12px', border: '1px solid #bbdefb' }}>
-                                    <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#1565c0' }}>
-                                        {selectedEvent.students.filter(s => !s.isWinner).length}
+                                    <div style={{ background: '#e3f2fd', padding: '15px 22px', borderRadius: '12px', border: '1px solid #bbdefb' }}>
+                                        <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#1565c0' }}>{presentParticipants.length}</div>
+                                        <div style={{ fontSize: '12px', color: '#1976d2' }}>Participants (Present)</div>
                                     </div>
-                                    <div style={{ fontSize: '13px', color: '#1976d2' }}>Participants</div>
+                                    <div style={{ background: '#fef2f2', padding: '15px 22px', borderRadius: '12px', border: '1px solid #fecaca' }}>
+                                        <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#b91c1c' }}>{absentStudents.length}</div>
+                                        <div style={{ fontSize: '12px', color: '#dc2626' }}>Absent (No Cert)</div>
+                                    </div>
                                 </div>
+                                {presentStudents.length === 0 && (
+                                    <p style={{ fontSize: '13px', color: '#b91c1c', background: '#fef2f2', padding: '10px', borderRadius: '8px', border: '1px solid #fecaca' }}>
+                                        ⚠️ No students marked present. Scan QR codes to mark attendance first.
+                                    </p>
+                                )}
                             </div>
-                            <p style={{ fontSize: '13px', color: '#64748b' }}>
-                                This will generate and download a ZIP file containing all certificates.
-                            </p>
+                            <button
+                                className="cd-modal-full-btn"
+                                disabled={presentStudents.length === 0}
+                                style={presentStudents.length === 0 ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+                                onClick={() => {
+                                    setTimeout(() => setShowCertificateModal(false), 800);
+                                }}
+                            >
+                                {presentStudents.length === 0 ? 'No Eligible Students' : `Generate ${presentStudents.length} Certificate${presentStudents.length !== 1 ? 's' : ''}`}
+                            </button>
                         </div>
-                        <button
-                            className="cd-modal-full-btn"
-                            onClick={() => {
-                                // In a real app, this would trigger an API call to generate and download the PDFs
-                                setTimeout(() => setShowCertificateModal(false), 800);
-                            }}
-                        >
-                            Confirm & Generate
-                        </button>
                     </div>
-                </div>
-            )}
+                );
+            })()}
             {/* ══════════ REGISTRATION CRITERIA MODAL ══════════ */}
             {showCriteriaModal && (
                 <div className="cd-modal-overlay" onClick={() => setShowCriteriaModal(false)}>
@@ -1023,6 +1249,218 @@ export default function CoordinatorDashboard({ embedded = false }) {
 
     const mainJSX = (
         <main className="cd-main" style={embedded ? { marginLeft: 0 } : undefined}>
+
+            {/* ── SCAN QR / ATTENDANCE VIEW ── */}
+            {activeSection === 'scanQr' && (
+                <div className="cd-scan-section">
+                    <h2 className="cd-section-title">📷 Scan QR Code — Mark Attendance</h2>
+                    <p className="cd-section-subtitle">Select an event, then scan or enter a student’s roll number to verify and mark attendance.</p>
+
+                    {scanToast && <div className="cd-scan-toast">{scanToast}</div>}
+
+                    {/* Event Selector */}
+                    <div className="cd-scan-event-selector">
+                        <label className="cd-scan-event-label">🎫 Select Event for Attendance</label>
+                        <select
+                            className="cd-scan-event-dropdown"
+                            value={scanEventId || ''}
+                            onChange={e => { setScanEventId(e.target.value ? Number(e.target.value) : null); setScanResult(null); stopScanner(); }}
+                        >
+                            <option value="">-- Choose an event --</option>
+                            {events.map(ev => (
+                                <option key={ev.id} value={ev.id}>{ev.name} ({ev.date}) — {mergeEventStudents(ev).students.length} registered</option>
+                            ))}
+                        </select>
+                        {scanEventId && (() => {
+                            const ev = events.find(e => e.id === scanEventId);
+                            const att = attendanceMap[scanEventId] || [];
+                            const merged = ev ? mergeEventStudents(ev) : null;
+                            const totalStudents = merged?.students?.length || 0;
+                            return (
+                                <div className="cd-scan-event-stats">
+                                    <span className="cd-scan-event-stat">📊 {totalStudents} registered</span>
+                                    <span className="cd-scan-event-stat present">✅ {att.length} present</span>
+                                    <span className="cd-scan-event-stat absent">❌ {totalStudents - att.length} remaining</span>
+                                </div>
+                            );
+                        })()}
+                    </div>
+
+                    {!scanEventId ? (
+                        <div className="cd-scan-placeholder">
+                            <div className="cd-scan-placeholder-icon">🎯</div>
+                            <p>Please <strong>select an event above</strong> to start scanning.</p>
+                            <p className="cd-scan-placeholder-hint">You must choose which event you’re taking attendance for before using the scanner.</p>
+                        </div>
+                    ) : (
+                        <>
+                        {/* Three-mode tabs */}
+                        <div className="cd-scan-mode-tabs">
+                            <button className={`cd-scan-mode-tab ${scanMode === 'webcam' ? 'active' : ''}`} onClick={() => { setScanMode('webcam'); setScanResult(null); }}>
+                                <span className="cd-scan-mode-icon">📷</span>
+                                <span className="cd-scan-mode-label">Webcam</span>
+                                <span className="cd-scan-mode-desc">Laptop / Phone camera</span>
+                            </button>
+                            <button className={`cd-scan-mode-tab ${scanMode === 'device' ? 'active' : ''}`} onClick={() => { setScanMode('device'); setScanResult(null); stopScanner(); setTimeout(() => deviceInputRef.current?.focus(), 100); }}>
+                                <span className="cd-scan-mode-icon">🔌</span>
+                                <span className="cd-scan-mode-label">Scanner Device</span>
+                                <span className="cd-scan-mode-desc">USB / Bluetooth QR reader</span>
+                            </button>
+                            <button className={`cd-scan-mode-tab ${scanMode === 'manual' ? 'active' : ''}`} onClick={() => { setScanMode('manual'); setScanResult(null); stopScanner(); }}>
+                                <span className="cd-scan-mode-icon">⌨️</span>
+                                <span className="cd-scan-mode-label">Manual Entry</span>
+                                <span className="cd-scan-mode-desc">Type Roll No / Token</span>
+                            </button>
+                        </div>
+
+                        <div className="cd-scan-layout">
+                            {/* Input area based on mode */}
+                            <div className="cd-scanner-area">
+
+                                {/* MODE 1: Webcam */}
+                                {scanMode === 'webcam' && (
+                                    <>
+                                        <div id={scannerDivId} className="cd-scanner-preview" />
+                                        <div className="cd-scanner-controls">
+                                            {!scannerRunning ? (
+                                                <button className="cd-scan-start-btn" onClick={startScanner}>📷 Start Camera</button>
+                                            ) : (
+                                                <button className="cd-scan-stop-btn" onClick={stopScanner}>⏹ Stop Camera</button>
+                                            )}
+                                        </div>
+                                    </>
+                                )}
+
+                                {/* MODE 2: External Scanner Device */}
+                                {scanMode === 'device' && (
+                                    <div className="cd-device-scan-area">
+                                        <div className="cd-device-icon">🔌</div>
+                                        <h3 className="cd-device-title">External QR Scanner Ready</h3>
+                                        <p className="cd-device-desc">Connect your USB/Bluetooth QR scanner device. Point it at a student’s QR code — the data will be captured automatically below.</p>
+                                        <div className="cd-device-input-wrap">
+                                            <input
+                                                ref={deviceInputRef}
+                                                className="cd-device-input"
+                                                placeholder="Scanner output will appear here..."
+                                                value={deviceInput}
+                                                onChange={e => setDeviceInput(e.target.value)}
+                                                onKeyDown={e => {
+                                                    if (e.key === 'Enter') {
+                                                        e.preventDefault();
+                                                        handleDeviceScan(deviceInput);
+                                                    }
+                                                }}
+                                                autoFocus
+                                            />
+                                            <div className="cd-device-pulse"></div>
+                                        </div>
+                                        <p className="cd-device-hint">💡 The input field above is auto-focused. When your scanner reads a QR code, it types the data and presses Enter automatically.</p>
+                                    </div>
+                                )}
+
+                                {/* MODE 3: Manual Entry */}
+                                {scanMode === 'manual' && (
+                                    <div className="cd-manual-entry-area">
+                                        <div className="cd-manual-entry-icon">⌨️</div>
+                                        <h3 className="cd-manual-entry-title">Manual Lookup</h3>
+                                        <p className="cd-manual-entry-desc">Enter the student’s Roll Number or Registration Token ID to look up their details.</p>
+                                        <div className="cd-manual-input-row">
+                                            <input
+                                                className="cd-manual-input"
+                                                placeholder="e.g. CS22A1042 or token..."
+                                                value={manualInput}
+                                                onChange={e => setManualInput(e.target.value)}
+                                                onKeyDown={e => e.key === 'Enter' && handleManualLookup()}
+                                                autoFocus
+                                            />
+                                            <button className="cd-manual-search-btn" onClick={handleManualLookup}>🔍 Lookup</button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Scan result card */}
+                            {scanResult && !scanResult.error && (
+                                <div className={`cd-scan-result-card ${scanResult.isDuplicate ? 'cd-scan-duplicate' : scanResult.isRegistered ? '' : 'cd-scan-not-registered'}`}>
+
+                                    {scanResult.isDuplicate && (
+                                        <div className="cd-scan-duplicate-banner">
+                                            ⚠️ ALREADY SCANNED — Duplication Detected!
+                                        </div>
+                                    )}
+                                    {!scanResult.isRegistered && !scanResult.isDuplicate && (
+                                        <div className="cd-scan-not-reg-banner">
+                                            ❌ NOT REGISTERED for this event
+                                        </div>
+                                    )}
+                                    {scanResult.isRegistered && !scanResult.isDuplicate && (
+                                        <div className="cd-scan-verified-banner">
+                                            ✅ Registration Verified
+                                        </div>
+                                    )}
+
+                                    <div className="cd-scan-result-header">
+                                        <div className="cd-scan-photo">
+                                            {scanResult.photo
+                                                ? <img src={scanResult.photo} alt={scanResult.student} />
+                                                : <span className="cd-scan-photo-fallback">{scanResult.student?.charAt(0) || '?'}</span>
+                                            }
+                                        </div>
+                                        <div className="cd-scan-info">
+                                            <h3>{scanResult.student}</h3>
+                                            <span className="cd-scan-roll">{scanResult.rollNo}</span>
+                                        </div>
+                                    </div>
+                                    <div className="cd-scan-details-grid">
+                                        <div className="cd-scan-detail"><span>🎫 Event</span><strong>{scanResult.event || events.find(e => e.id === scanEventId)?.name || 'N/A'}</strong></div>
+                                        <div className="cd-scan-detail"><span>📅 Date</span><strong>{scanResult.date ? new Date(scanResult.date).toLocaleDateString('en-IN') : events.find(e => e.id === scanEventId)?.date || 'N/A'}</strong></div>
+                                        <div className="cd-scan-detail"><span>📍 Venue</span><strong>{scanResult.venue || events.find(e => e.id === scanEventId)?.venue || 'N/A'}</strong></div>
+                                        <div className="cd-scan-detail"><span>🕐 Registered</span><strong>{scanResult.registeredAt ? new Date(scanResult.registeredAt).toLocaleString('en-IN') : 'N/A'}</strong></div>
+                                    </div>
+                                    {scanResult.token && <div className="cd-scan-token">Token: {scanResult.token?.slice(0, 24)}…</div>}
+
+                                    <div className="cd-scan-actions">
+                                        {scanResult.isDuplicate ? (
+                                            <div className="cd-scan-already-marked">✅ Already Marked Present — Duplicate Scan</div>
+                                        ) : scanResult.isRegistered ? (
+                                            <button className="cd-scan-mark-btn" onClick={() => handleMarkAttendance(scanEventId, scanResult.rollNo)}>
+                                                ✅ Mark as PRESENT
+                                            </button>
+                                        ) : (
+                                            <div className="cd-scan-error-msg">❌ Student is NOT registered for this event. Cannot mark attendance.</div>
+                                        )}
+                                        <button className="cd-scan-another-btn" onClick={() => {
+                                            setScanResult(null);
+                                            if (scanMode === 'webcam') startScanner();
+                                            else if (scanMode === 'device') { setDeviceInput(''); setTimeout(() => deviceInputRef.current?.focus(), 100); }
+                                            else setManualInput('');
+                                        }}>
+                                            🔄 Scan Next Student
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {scanResult && scanResult.error && (
+                                <div className="cd-scan-result-card cd-scan-error">
+                                    <h3>❌ Invalid QR Code</h3>
+                                    <p>The scanned code is not a valid student registration QR.</p>
+                                    <button className="cd-scan-another-btn" onClick={() => { setScanResult(null); if (scanMode === 'webcam') startScanner(); }}>🔄 Try Again</button>
+                                </div>
+                            )}
+
+                            {!scanResult && scanMode === 'webcam' && !scannerRunning && (
+                                <div className="cd-scan-placeholder">
+                                    <div className="cd-scan-placeholder-icon">📱</div>
+                                    <p>Click <strong>Start Camera</strong> to scan a student’s QR code.</p>
+                                    <p className="cd-scan-placeholder-hint">Scanning for: <strong>{events.find(e => e.id === scanEventId)?.name}</strong></p>
+                                </div>
+                            )}
+                        </div>
+                        </>
+                    )}
+                </div>
+            )}
 
             {/* ── UPCOMING EVENTS VIEW ── */}
             {activeSection === 'upcoming' && (
@@ -1401,11 +1839,30 @@ export default function CoordinatorDashboard({ embedded = false }) {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {pageData.length > 0 ? pageData.map((row, i) => (
+                                    {pageData.length > 0 ? pageData.map((row, i) => {
+                                        const isAttended = selectedEvent && (attendanceMap[selectedEvent.id] || []).includes(row.rollNo);
+                                        return (
                                         <tr key={row.id} style={row.isLive ? { background: 'rgba(34,197,94,0.06)', borderLeft: '3px solid #22c55e' } : {}}>
                                             {ALL_COLUMNS.filter(c => visibleCols.includes(c.key)).map(col => (
                                                 <td key={col.key}>
                                                     {col.key === 'sno' ? (currentPage - 1) * ROWS_PER_PAGE + i + 1 :
+                                                        col.key === 'attended' ? (
+                                                            <span
+                                                                className={`cd-attendance-badge ${isAttended ? 'present' : 'absent'}`}
+                                                                onClick={() => {
+                                                                    if (isAttended) {
+                                                                        removeAttendance(selectedEvent.id, row.rollNo);
+                                                                    } else {
+                                                                        markAttendance(selectedEvent.id, row.rollNo);
+                                                                    }
+                                                                    setAttendanceMap(getAttendanceMap());
+                                                                }}
+                                                                style={{ cursor: 'pointer' }}
+                                                                title={isAttended ? 'Click to mark absent' : 'Click to mark present'}
+                                                            >
+                                                                {isAttended ? '✅ Present' : '❌ Absent'}
+                                                            </span>
+                                                        ) :
                                                         col.key === 'isWinner' ? (
                                                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                                                 <input
@@ -1426,7 +1883,7 @@ export default function CoordinatorDashboard({ embedded = false }) {
                                                 </td>
                                             ))}
                                         </tr>
-                                    )) : (
+                                    );}) : (
                                         <tr>
                                             <td colSpan={visibleCols.length} style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
                                                 No students match the current filters.

@@ -262,6 +262,24 @@ export default function StudentDashboard() {
     const [toast, setToast] = useState(null);
     const qrCanvasRef = useRef(null);
 
+    /* ── student photo (localStorage persisted) ── */
+    const photoInputRef = useRef(null);
+    const [studentPhoto, setStudentPhoto] = useState(() => {
+        try { return localStorage.getItem(`aditya_student_photo_${student.rollNo}`) || ''; } catch { return ''; }
+    });
+
+    const handlePhotoUpload = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            const dataUrl = ev.target.result;
+            setStudentPhoto(dataUrl);
+            try { localStorage.setItem(`aditya_student_photo_${student.rollNo}`, dataUrl); } catch { }
+        };
+        reader.readAsDataURL(file);
+    };
+
     /* ── payment ── */
     const [showPaymentStep, setShowPaymentStep] = useState(false);
     const [isProcessingPayment, setIsProcessingPayment] = useState(false);
@@ -685,7 +703,7 @@ export default function StudentDashboard() {
                         <span className="sd-user-roll">{student.rollNo}</span>
                     </div>
                     <div className="sd-user-avatar" onClick={() => setShowProfileModal(true)} title="View Profile">
-                        {student.name.charAt(0)}
+                        {studentPhoto ? <img src={studentPhoto} alt={student.name} className="sd-avatar-img" /> : student.name.charAt(0)}
                     </div>
                 </div>
             </header>
@@ -791,7 +809,11 @@ export default function StudentDashboard() {
                             {/* Student Profile Overview Card */}
                             <div className="sd-profile-overview-card">
                                 <div className="sd-profile-overview-header">
-                                    <div className="sd-profile-avatar-lg">{student.name.charAt(0)}</div>
+                                    <div className="sd-profile-avatar-lg" onClick={() => photoInputRef.current?.click()} title="Click to upload photo">
+                                        {studentPhoto ? <img src={studentPhoto} alt={student.name} className="sd-avatar-img" /> : student.name.charAt(0)}
+                                        <div className="sd-avatar-upload-overlay">📷</div>
+                                    </div>
+                                    <input ref={photoInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handlePhotoUpload} />
                                     <div className="sd-profile-primary-info">
                                         <h2>{student.name}</h2>
                                         <p>{student.rollNo}</p>
@@ -985,15 +1007,22 @@ export default function StudentDashboard() {
                                         token: qrDoc.qrToken,
                                         student: qrDoc.studentName,
                                         rollNo: qrDoc.rollNo,
+                                        eventId: qrDoc.eventId,
                                         event: qrDoc.eventName,
                                         date: qrDoc.eventDate,
                                         venue: qrDoc.venue,
                                         registeredAt: qrDoc.registeredAt,
                                     })}
-                                    size={200}
+                                    size={220}
                                     bgColor="#ffffff"
                                     fgColor="#4f46e5"
                                     level="H"
+                                    imageSettings={studentPhoto ? {
+                                        src: studentPhoto,
+                                        height: 48,
+                                        width: 48,
+                                        excavate: true,
+                                    } : undefined}
                                 />
                             </div>
 
@@ -1016,7 +1045,10 @@ export default function StudentDashboard() {
                     <div className="sd-modal-overlay" onClick={() => setShowProfileModal(false)}>
                         <div className="sd-modal sd-profile-modal" onClick={e => e.stopPropagation()}>
                             <button className="sd-modal-close" onClick={() => setShowProfileModal(false)}>×</button>
-                            <div className="sd-profile-modal-avatar">{student.name.charAt(0)}</div>
+                            <div className="sd-profile-modal-avatar" onClick={() => photoInputRef.current?.click()} title="Click to change photo">
+                                {studentPhoto ? <img src={studentPhoto} alt={student.name} className="sd-avatar-img" /> : student.name.charAt(0)}
+                                <div className="sd-avatar-upload-overlay">📷</div>
+                            </div>
                             <h3 className="sd-modal-title">{student.name}</h3>
                             <div className="sd-profile-grid">
                                 {[['Roll No', student.rollNo], ['Branch', student.branch], ['Year', student.year], ['Section', student.section], ['Semester', student.semester], ['CGPA', student.cgpa], ['Gender', student.gender], ['Nationality', student.nationality], ['Region', student.region]].map(([l, v]) => (

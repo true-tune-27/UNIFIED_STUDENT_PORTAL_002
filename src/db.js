@@ -154,3 +154,41 @@ export function addDeletedEvent(eventId) {
         window.dispatchEvent(new StorageEvent('storage', { key: LS_DELETED_EVENTS_KEY }));
     }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   ATTENDANCE TRACKING
+   Coordinators mark attendance here after scanning QR.
+   Shape: { [eventId]: [rollNo1, rollNo2, ...] }
+   ═══════════════════════════════════════════════════════════════ */
+const LS_ATTENDANCE_KEY = 'aditya_attendance_v1';
+
+export function getAttendanceMap() {
+    try {
+        const raw = localStorage.getItem(LS_ATTENDANCE_KEY);
+        return raw ? JSON.parse(raw) : {};
+    } catch { return {}; }
+}
+
+export function getAttendance(eventId) {
+    const map = getAttendanceMap();
+    return map[eventId] || [];
+}
+
+export function markAttendance(eventId, rollNo) {
+    const map = getAttendanceMap();
+    if (!map[eventId]) map[eventId] = [];
+    if (!map[eventId].includes(rollNo)) {
+        map[eventId].push(rollNo);
+        try { localStorage.setItem(LS_ATTENDANCE_KEY, JSON.stringify(map)); } catch { }
+        window.dispatchEvent(new StorageEvent('storage', { key: LS_ATTENDANCE_KEY }));
+    }
+}
+
+export function removeAttendance(eventId, rollNo) {
+    const map = getAttendanceMap();
+    if (!map[eventId]) return;
+    map[eventId] = map[eventId].filter(r => r !== rollNo);
+    try { localStorage.setItem(LS_ATTENDANCE_KEY, JSON.stringify(map)); } catch { }
+    window.dispatchEvent(new StorageEvent('storage', { key: LS_ATTENDANCE_KEY }));
+}
+
